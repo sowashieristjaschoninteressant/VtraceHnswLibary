@@ -14,6 +14,11 @@
  */
 
 
+ #include "stdlib.h"
+ #include "stdio.h"
+ #include "fcntl.h"
+ 
+
 typedef unsigned char     uint8;
 typedef unsigned short    uint16;
 typedef unsigned int      uint32;
@@ -34,15 +39,16 @@ typedef node VT_node;
 
 typedef struct {
 
-  uint32 graphLevels;
+  uint32 maxLevel;
   node* nodes;
 
-} graph;
+} Graph;
 
-typedef graph VT_graph;
+typedef Graph VT_graph;
 
-extern VT_graph VT_createGraph();
-extern float VT_search();
+extern VT_graph VT_createGraph(Graph*);
+extern float VT_search(Graph*);
+extern void VT_insert(Graph*);
 
 
 #endif
