@@ -17,6 +17,8 @@
  #include "stdlib.h"
  #include "stdio.h"
  #include "fcntl.h"
+ #include "math.h"
+ #include "time.h"
  
 
 typedef unsigned char     uint8;
@@ -24,31 +26,38 @@ typedef unsigned short    uint16;
 typedef unsigned int      uint32;
 typedef unsigned long int uint64;
 
+typedef char     int8;
+typedef short    int16;
+typedef int      int32;
+typedef long int int64;
+
 
 typedef struct {
   uint32 id;
   uint32 maxLevel;
-
   uint32** neigbours;
   void* data;
-
 } node;
 
 typedef node VT_node;
 
-
 typedef struct {
-
-  uint32 maxLevel;
+  uint32 efsearch;
+  uint32 efconstruction;
+  uint32 maxLayer;
+  uint32 size;
   node* nodes;
 
+  node* entrypoint;
+  
 } Graph;
 
 typedef Graph VT_graph;
 
-extern VT_graph VT_createGraph(Graph*);
-extern float VT_search(Graph*);
-extern void VT_insert(Graph*);
-
+extern VT_graph VTcreateGraph(void* data, uint32 size);
+extern float VTsearch(Graph*, float vec);
+extern void VTinsert(Graph*, float vec);
+// sample level
+extern int levelSample(uint32,float);
 
 #endif
