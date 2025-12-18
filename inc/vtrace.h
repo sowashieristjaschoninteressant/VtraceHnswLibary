@@ -1,5 +1,3 @@
-#ifndef VTRACE_H
-#define VTRACE_H
 /**
  * @file vtrace.h
  * @author Leon Margale (leon@margale.de)
@@ -14,26 +12,15 @@
  */
 
 
- #include "stdlib.h"
- #include "stdio.h"
- #include "fcntl.h"
- #include "math.h"
- #include "time.h"
+#ifndef VTRACE_H
+#define VTRACE_H
+
+#include "vtraceCommon.h"
+
  
 
-typedef unsigned char     uint8;
-typedef unsigned short    uint16;
-typedef unsigned int      uint32;
-typedef unsigned long int uint64;
-
-typedef char     int8;
-typedef short    int16;
-typedef int      int32;
-typedef long int int64;
-
-
 typedef struct {
-  uint32 id;
+  uint64 id;
   uint32 maxLevel;
   uint32** neigbours;
   void* data;
@@ -45,7 +32,7 @@ typedef struct {
   uint32 efsearch;
   uint32 efconstruction;
   uint32 maxLayer;
-  uint32 size;
+  uint64 count;
   node* nodes;
 
   node* entrypoint;
@@ -54,10 +41,14 @@ typedef struct {
 
 typedef Graph VT_graph;
 
-extern VT_graph VTcreateGraph(void* data, uint32 size);
+extern VT_graph* initializeGraph(uint32, uint32, uint32);
+extern void uninitializeGraph(VT_graph* graph);
+
+extern VT_graph VTcreateGraph(float* data, uint32 size);
 extern float VTsearch(Graph*, float vec);
 extern void VTinsert(Graph*, float vec);
-// sample level
-extern int levelSample(uint32,float);
+
+
+extern int VTlevelSample(uint32,float);
 
 #endif

@@ -1,6 +1,35 @@
 #include "vtrace.h"
 
 
+VT_graph* initializeGraph(uint32 maxLayer, uint32 efConstruction, uint32 efSearch){
+    
+    VT_graph* graph = malloc(sizeof(VT_graph));
+
+    assert(graph);
+
+    // seed random algorithm
+    srand((int) time(NULL));
+
+    graph->efconstruction = efConstruction;
+    graph->efsearch = efSearch;
+    graph->maxLayer = maxLayer;
+    graph->nodes = NULL;
+    graph->entrypoint = NULL;
+
+
+
+    return graph;
+}
+
+void uninitializeGraph(VT_graph* graph){
+
+  
+    free(graph->nodes);
+    free(graph);
+}
+
+
+
 
 /**
  * @brief 
@@ -9,9 +38,7 @@
  * @param level_mult 
  * @return int 
  */
-int levelSample(uint32 lMax,float level_mult){
-    // PUT THIS INTO THE LIBINIT FUNCTION
-    srand( (int) time(NULL));
+int VTlevelSample(uint32 lMax,float level_mult){
     
     float u = (float)rand() / ((float) RAND_MAX + 1.0f);
 
