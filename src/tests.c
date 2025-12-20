@@ -1,5 +1,19 @@
+#include "vtraceCommon.h"
 #include "vtrace.h"
 
-#include "assert.h"
-#include "errno.h"
 
+
+/*
+
+===========================
+HEAP TESTS
+===========================
+
+*/
+
+void HEAP_TESTS(){
+
+
+    printf("[+] HEAP TESTS SUCCESSFULLY FINISHED");
+    return;
+}

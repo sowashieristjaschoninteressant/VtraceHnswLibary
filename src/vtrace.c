@@ -1,12 +1,11 @@
 #include "vtrace.h"
 
-
 VT_graph* initializeGraph(uint32 maxLayer, uint32 efConstruction, uint32 efSearch){
     
     VT_graph* graph = malloc(sizeof(VT_graph));
 
-    assert(graph);
-
+    HNSW_ASSERT(graph);
+    
     // seed random algorithm
     srand((int) time(NULL));
 
@@ -16,20 +15,14 @@ VT_graph* initializeGraph(uint32 maxLayer, uint32 efConstruction, uint32 efSearc
     graph->nodes = NULL;
     graph->entrypoint = NULL;
 
-
-
     return graph;
 }
 
 void uninitializeGraph(VT_graph* graph){
 
-  
     free(graph->nodes);
     free(graph);
 }
-
-
-
 
 /**
  * @brief 

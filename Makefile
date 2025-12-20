@@ -1,14 +1,15 @@
 
 CC := gcc
-FLAGS := -Wall -O3 -ffast-math -I /Users/leon/code/hnsw/inc
+FLAGS := -Wall -Wextra -O3 -ffast-math -I /Users/leon/code/hnsw/inc
 BIN := vtrace
 
-all:
+all: vtrace
 
 
+vtrace:
+	$(CC) ./src/*.c $(FLAGS) -o ./bin/vtrace
 
-
-
-vtrace.o:
+clean:
+	rm ./bin/*
 
 

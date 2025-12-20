@@ -1,9 +1,8 @@
-#include "stdlib.h"
+#include "vtrace.h"
 
-
-
-int main(int argc, char** args){
-
+int main(int argc, char** argw){
+    HNSW_UNUSED(argc);
+    HNSW_UNUSED(argw);
 
 
     

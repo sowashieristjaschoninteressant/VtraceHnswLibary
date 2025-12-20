@@ -17,8 +17,6 @@
 
 #include "vtraceCommon.h"
 
- 
-
 typedef struct {
   uint64 id;
   uint32 maxLevel;

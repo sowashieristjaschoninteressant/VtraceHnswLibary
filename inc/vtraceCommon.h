@@ -13,7 +13,7 @@ LIBARY INCLUDES
 #include "math.h"
 #include "time.h"
 #include "assert.h"
-
+#include "errno.h"
 
 /*
 =====================
@@ -41,7 +41,6 @@ utility MACROS
 #define HNSW_INLINE static inline
 #define HNSW_UNUSED(x) (void)(x)
 
-
 /*
 =====================
 DEBUG / assertions
@@ -53,7 +52,5 @@ DEBUG / assertions
 #else
 #define HNSW_ASSERT(x) ((void)0)
 #endif
-
-
 
 #endif
