@@ -1,6 +1,6 @@
 
 CC := gcc
-FLAGS := -Wall -Wextra -O3 -ffast-math -I /Users/leon/code/hnsw/inc
+FLAGS := -Wall -Wextra -O3 -ffast-math -I /Users/leon/code/hnsw/inc -pg
 BIN := vtrace
 
 all: vtrace

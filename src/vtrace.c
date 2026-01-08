@@ -14,7 +14,7 @@ VT_graph* initializeGraph(uint32 maxLayer, uint32 efConstruction, uint32 efSearc
     graph->maxLayer = maxLayer;
     graph->nodes = NULL;
     graph->entrypoint = NULL;
-
+    
     return graph;
 }
 
@@ -40,4 +40,16 @@ int VTlevelSample(uint32 lMax,float level_mult){
     uint32 level = (int) (-logf(u) * level_mult);
 
     return level > lMax ? lMax : level;
+}
+
+
+
+node* SEARCH_LAYER(vec v, node* ep, uint32 ef, uint32 lc){
+
+    Heap* c = heap_init(ef, max_cmp); // candidate list
+    Heap* w = heap_init(ef, min_cmp); // closest results
+
+    
+
+    return NULL;
 }

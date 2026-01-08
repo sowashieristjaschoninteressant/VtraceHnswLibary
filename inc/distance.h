@@ -2,8 +2,6 @@
 #define VT_DISTANCE_H
 #include "vtraceCommon.h"
 
-
-
 typedef float (*distance_func) (float* a, float* b, uint32 dim);
 
 HNSW_INLINE float l2_sq_distance(float* a, float* b, uint32 dim);

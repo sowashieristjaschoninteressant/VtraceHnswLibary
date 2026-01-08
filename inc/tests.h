@@ -6,5 +6,6 @@
 
 
 extern void INSERT_POP_MAXHEAP_TEST();
+extern void INSERT_POP_MINHEAP_TEST();
 extern void HEAP_TESTS();
 #endif

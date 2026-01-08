@@ -1,8 +1,14 @@
 #include "heap.h"
 
-HNSW_INLINE uint32 parent(uint32 i) { return (i - 1) / 2; }
-HNSW_INLINE uint32 left(uint32 i)   { return 2*i + 1;}
-HNSW_INLINE uint32 right(uint32 i)  { return 2*i + 2;}
+HNSW_INLINE uint32 parent(uint32 i) { 
+    return (i - 1) / 2; 
+}
+HNSW_INLINE uint32 left(uint32 i)   {
+     return 2*i + 1;
+    }
+HNSW_INLINE uint32 right(uint32 i)  {
+     return 2*i + 2;
+    }
 
 HNSW_INLINE void swap(void** a, void** b){
     void* temp = *a;
@@ -11,8 +17,31 @@ HNSW_INLINE void swap(void** a, void** b){
     *b = temp;
 }
 
+HNSW_INLINE void siftDown(Heap* heap, uint32 index){
+    while(1){
+        uint32 l = left(index), r = right(index);
+        uint32 best = index;
+
+        if(l < heap->size && heap->compareFunc(heap->data[l], heap->data[best]) < 0){
+            best = l;
+        }
+
+        if(r < heap->size && heap->compareFunc(heap->data[r], heap->data[best]) < 0 ){
+            best = r;
+        }
+
+        if(best == index){
+            break;
+        }
+
+        swap( (void**) &heap->data[index], (void**) &heap->data[best]);
+
+        index = best;
+
+    }
+}
+
 /**
- * @brief okay this function is a bit complicated for me so ill write the meaning of the possible return values (market as x for now) here
  * if x < 0
  * a has higher prio
  * if x > 0
@@ -21,10 +50,7 @@ HNSW_INLINE void swap(void** a, void** b){
  * if x == 0 
  * equal
  * 
- * @param a 
- * @param b 
- * @return HNSW_INLINE 
- */
+*/
  int32 min_cmp(const heapItem* a, const heapItem* b){
     return (a->dist > b->dist) - (a->dist < b->dist);
 }
@@ -60,9 +86,9 @@ void heap_insert(Heap* heap, uint32 id, float32 dist){
     int32 i;
 
     if(heap->size > heap->capacity){
-        printf("[-] ok here we need to realloc...\n");
-        heap->capacity = heap->capacity * 2;
-        realloc(heap->data, heap->capacity);
+        // we care later about reallocation basically this should never happen i will allways have fixed size heap
+        printf("[-] heap has aleready reached maximum size\n");
+        exit(EXIT_FAILURE);
     }
 
     heapItem* item = (heapItem*) &heap->pool[heap->size];
@@ -86,20 +112,26 @@ void heap_insert(Heap* heap, uint32 id, float32 dist){
 
 }
 
-/**
- * @brief returns the first item out of the heap.
- * for now we just return the heapItem and dont exclude it
- * @param heap 
- * @return heapItem* 
- */
+
 heapItem* heapPop(Heap* heap){
-    int32 root = 0;
+    heapItem* root;
+
     if(heap->size == 0){
         return NULL;
     }
-    // pop and close out logic;
 
-    return heap->data[root];
+    root = heap->data[0];
+    heap->size--;
+    heap->data[0] = heap->data[heap->size];
+
+   siftDown(heap, 0);
+   
+    return root;
+}
+
+heapItem* heapPeek(Heap* heap){
+   HNSW_ASSERT(heap->size != 0);
+    return heap->data[0];
 }
 
 
