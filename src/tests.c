@@ -33,7 +33,7 @@ HEAP TESTS
 */
 
 void INSERT_POP_MINHEAP_TEST(){
-    int32 fsize = 100;
+    int32 fsize = 20000;
     Heap* heap = heap_init(fsize, min_cmp);
     float32* farray = generateRFA(fsize, 0.0f, 20000);
 

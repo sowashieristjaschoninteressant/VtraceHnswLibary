@@ -49,6 +49,7 @@ DEBUG / assertions
 
 #ifndef NDEBUG
 #define HNSW_ASSERT(x) assert(x)
+ #define HNSW_LOG(x) printf("[!]LOG: %s\n", x)
 #else
 #define HNSW_ASSERT(x) ((void)0)
 #endif

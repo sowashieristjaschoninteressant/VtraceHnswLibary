@@ -35,9 +35,7 @@ HNSW_INLINE void siftDown(Heap* heap, uint32 index){
         }
 
         swap( (void**) &heap->data[index], (void**) &heap->data[best]);
-
         index = best;
-
     }
 }
 
