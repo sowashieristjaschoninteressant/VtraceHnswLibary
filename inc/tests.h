@@ -8,4 +8,6 @@
 extern void INSERT_POP_MAXHEAP_TEST();
 extern void INSERT_POP_MINHEAP_TEST();
 extern void HEAP_TESTS();
+extern void SIMPLE_SEARCH_LAYERTEST();
+extern void SEARCHLAYER_TESTS();
 #endif

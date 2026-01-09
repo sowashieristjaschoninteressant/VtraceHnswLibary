@@ -1,7 +1,8 @@
 #include "distance.h"
 
+#include "vtrace.h"
 
-HNSW_INLINE float32 l2_sq_distance(vec* a, vec* b){
+ float32 l2_sq_distance(vec* a, vec* b){
     float32 dist = 0.0f;
 
     for(uint32 i = 0; i < a->dim; i++){

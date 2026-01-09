@@ -1,6 +1,6 @@
 #include "vtrace.h"
 
-VT_graph *initializeGraph(uint32 maxLayer, uint32 efConstruction, uint32 efSearch)
+VT_graph *initializeGraph(uint32 maxLayer, uint32 efConstruction, uint32 efSearch, uint32 M_maxNeigbours)
 {
 
     VT_graph *graph = malloc(sizeof(VT_graph));
@@ -9,8 +9,11 @@ VT_graph *initializeGraph(uint32 maxLayer, uint32 efConstruction, uint32 efSearc
 
     // seed random algorithm
     srand((int)time(NULL));
-
-    graph->M_maxNeigbours = DEFAULT_MAX_NEIGBOURS;
+    if( M_maxNeigbours <= 0){
+        graph->M_maxNeigbours = DEFAULT_MAX_NEIGBOURS;
+    }else{
+        graph->M_maxNeigbours = M_maxNeigbours;
+    }
     graph->efconstruction = efConstruction;
     graph->efsearch = efSearch;
     graph->maxLayer = maxLayer;
@@ -47,7 +50,7 @@ void uninitializeGraph(VT_graph *graph)
  * @param level_mult
  * @return int
  */
-int VTlevelSample(uint32 lMax, float level_mult)
+int VTlevelSample(uint32 lMax, float32 level_mult)
 {
 
     float u = (float)rand() / ((float)RAND_MAX + 1.0f);
@@ -57,6 +60,14 @@ int VTlevelSample(uint32 lMax, float level_mult)
     uint32 level = (int)(-logf(u) * level_mult);
 
     return level > lMax ? lMax : level;
+}
+
+ void VTaddNeigbour(node* target, uint32 neighbourId, uint32 layer, uint32 M_MAXneigbours){
+    if(M_MAXneigbours < target->numNeigbours[layer]){
+        HNSW_LOG("VTaddNeigbour to many neighbours in layer...");
+        exit(EXIT_FAILURE);
+    }
+    target->neigbours[layer][target->numNeigbours[layer]++] = neighbourId;
 }
 
 /**
@@ -88,12 +99,15 @@ Output: ef closest neighbors to q
 // node* SEARCH_LAYER(vec v, node* ep, uint32 ef, uint32 lc)
 Heap *SEARCH_LAYER(Graph *graph, vec q, uint32 lc)
 {
-
     Heap *c = heap_init(graph->efsearch, min_cmp); // candidate list
     Heap *w = heap_init(graph->efsearch, max_cmp); // closest results
 
     visitedList *visited = &graph->visited;
     // TODO: after aproximatly 3 Billion searches this should overflow so i need to detect that and memset the visited list also if my nodes increase so should my visited List
+
+    if(graph->visited.visited_mark == 0 ){
+        memset(graph->visited.visited,0, sizeof(uint32) * graph->visited.size);
+    }
 
     graph->visited.visited_mark++;
 
@@ -116,13 +130,13 @@ Heap *SEARCH_LAYER(Graph *graph, vec q, uint32 lc)
 
         node *currentNode = &graph->nodes[current->id];
 
-        for (uint32 i = 0; i < graph->M_maxNeigbours; i++)
+        for (uint32 i = 0; i < currentNode->numNeigbours[lc]; i++)
         {
-              node *neigbour = currentNode->neigbours[lc][i];
+              node *neigbour = &graph->nodes[currentNode->neigbours[lc][i]];
 
             if (graph->visited.visited[neigbour->id] != graph->visited.visited_mark)
             {
-
+                printf("OK RUNNING\n"); fflush(stdout);
                 graph->visited.visited[neigbour->id] = graph->visited.visited_mark; // mark as visited;
 
                 float32 dist = l2_sq_distance((vec *)graph->nodes[neigbour->id].data, &q);

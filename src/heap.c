@@ -25,15 +25,12 @@ HNSW_INLINE void siftDown(Heap* heap, uint32 index){
         if(l < heap->size && heap->compareFunc(heap->data[l], heap->data[best]) < 0){
             best = l;
         }
-
         if(r < heap->size && heap->compareFunc(heap->data[r], heap->data[best]) < 0 ){
             best = r;
         }
-
         if(best == index){
             break;
         }
-
         swap( (void**) &heap->data[index], (void**) &heap->data[best]);
         index = best;
     }

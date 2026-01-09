@@ -34,7 +34,7 @@ typedef struct {
   uint32 maxLevel;
   uint32** neigbours;
   uint32* numNeigbours;
-  
+
   void* data;
 } node;
 
@@ -69,13 +69,15 @@ typedef struct Graph Graph;
 
 typedef Graph VT_graph;
 
-extern VT_graph* initializeGraph(uint32, uint32, uint32);
+VT_graph *initializeGraph(uint32 maxLayer, uint32 efConstruction, uint32 efSearch, uint32 M_maxNeigbours);
 extern void uninitializeGraph(VT_graph* graph);
 
 extern VT_graph VTcreateGraph(float* data, uint32 size);
 extern float VTsearch(Graph*, float vec);
 extern void VTinsert(Graph*, float vec);
-extern int VTlevelSample(uint32,float);
+
+extern void VTaddNeigbour(node* target, uint32 neighbourId, uint32 layer, uint32 M_MAXneigbours);
+extern int VTlevelSample(uint32,float32);
 
 // ALGORITHMS
 Heap* SEARCH_LAYER( Graph* graph ,vec q, uint32 lc);
