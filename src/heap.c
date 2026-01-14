@@ -107,7 +107,6 @@ void heap_insert(Heap* heap, uint32 id, float32 dist){
 
 }
 
-
 heapItem* heapPop(Heap* heap){
     heapItem* root;
 

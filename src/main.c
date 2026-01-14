@@ -5,7 +5,7 @@ int main(int argc, char** argw){
     HNSW_UNUSED(argw);
     
     HEAP_TESTS();
-    SEARCHLAYER_TESTS();
+    GRAPH_TESTS();
     
     return EXIT_SUCCESS;
 }
