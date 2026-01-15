@@ -106,14 +106,14 @@ void INSERT_POP_MINHEAP_TEST(){
         heap_insert(heap, i, farray[i]);
     }
 
-    heapItem* before =  heapPop(heap);
-    assert(before != NULL);
+    heapItem before =  heapPop(heap);
+    
     for(int32 i = 1; i < fsize; i++){
        
-        heapItem* temp = heapPop(heap);
-        assert(temp != NULL); 
-        assert( temp->dist >= before->dist);
-
+        heapItem temp = heapPop(heap);
+         
+        
+        HNSW_ASSERT(before.dist <= temp.dist);
         before = temp;
     }
 
@@ -135,14 +135,14 @@ void INSERT_POP_MAXHEAP_TEST(){
         heap_insert(heap,i, farray[i]);
     }
 
-    heapItem* before = heapPop(heap);
-    assert(before != NULL);
+    heapItem before = heapPop(heap);
+    
     for(int32 i = 1; i < fsize; i++){
        
-        heapItem* temp = heapPop(heap);
-        assert(temp != NULL);
+        heapItem temp = heapPop(heap);
         
-        assert( temp->dist <= before->dist );
+        
+        assert( temp.dist <= before.dist );
 
         before = temp;
     }
@@ -175,10 +175,10 @@ void HEAP_TESTS(){
     }
     uint32 j = 0;
     while(heap->size > 0 ){
-        heapItem* current = heapPop(heap);
-         printf("dist: %f, id: %i\n", current->dist, current->id );
+        heapItem current = heapPop(heap);
+         printf("dist: %f, id: %i\n", current.dist, current.id );
 
-        HNSW_ASSERT(current->dist == fValues[j++]);
+        HNSW_ASSERT(current.dist == fValues[j++]);
     }
 
     HNSW_LOG("DETERMINISTIC INSERTPOP WORKS!");
@@ -208,7 +208,7 @@ void SELECT_NEAREST_NABOURS(){
 
     printf("Candidates in max-heap order (root = largest distance):\n");
     for (uint32 i = 0; i < c->size; i++) {
-        printf("id=%u dist=%.2f\n", c->data[i]->id, c->data[i]->dist);
+        printf("id=%u dist=%.2f\n", c->data[i].id, c->data[i].dist);
     }
 
     // Step 2: Select M nearest neighbors
@@ -217,15 +217,13 @@ void SELECT_NEAREST_NABOURS(){
     // Step 3: Pop from the resulting max-heap to get M closest
     printf("\nSelected %u nearest neighbors (max-heap root = farthest of the closest):\n", M);
     while (m->size > 0) {
-        heapItem *item = heapPop(m);
-        printf("id=%u dist=%.2f\n", item->id, item->dist);
+        heapItem item = heapPop(m);
+        printf("id=%u dist=%.2f\n", item.id, item.dist);
     }
 
     // Cleanup
     heap_dispose(c);
     heap_dispose(m);
-
-
 
 }
 
@@ -240,9 +238,9 @@ void SIMPLE_SEARCH_LAYERTEST(){
     int resultIteration = 0;
     while(results->size > 0){
      
-      heapItem* temp =  heapPop(results);
-      HNSW_ASSERT(temp->id == expectedResultIds[resultIteration++]);
-      printf("these are the results id:  %i distance: %f\n", temp->id, temp->dist);
+      heapItem temp =  heapPop(results);
+      HNSW_ASSERT(temp.id == expectedResultIds[resultIteration++]);
+      printf("these are the results id:  %i distance: %f\n", temp.id, temp.dist);
     }
     HNSW_LOG("SEARCH-LAYER WORKING");
     heap_dispose(results);

@@ -28,15 +28,15 @@ Heap *SELECT_NEIGBOURS_SIMPLE(Heap *c, uint32 M)
     Heap *m = heap_init(M, max_cmp);
     while (c->size > 0)
     {
-        heapItem *current = heapPop(c);
+        heapItem current = heapPop(c);
         if (m->size < M)
         {
-            heap_insert(m, current->id, current->dist);
+            heap_insert(m, current.id, current.dist);
         }
-        else if (current->dist < heapPeek(m)->dist)
+        else if (current.dist < heapPeek(m).dist)
         {
             heapPop(m);
-            heap_insert(m, current->id, current->dist);
+            heap_insert(m, current.id, current.dist);
         }
     }
     return m;
@@ -92,17 +92,17 @@ Heap *SEARCH_LAYER(Graph *graph, vec q, uint32 lc)
 
     while (c->size > 0)
     {
-        heapItem *current = heapPop(c);
-        heapItem *furthestElementQ = heapPeek(w);
+        heapItem current = heapPop(c);
+        heapItem furthestElementQ = heapPeek(w);
 
-        if (w->size >= graph->efsearch && current->dist > furthestElementQ->dist)
+        if (w->size >= graph->efsearch && current.dist > furthestElementQ.dist)
         {
             HNSW_LOG("all elements are evaluated in searchLayer");
             // all elements are evaluated;;;;;
             break;
         }
 
-        node *currentNode = &graph->nodes[current->id];
+        node *currentNode = &graph->nodes[current.id];
 
         for (uint32 i = 0; i < currentNode->numNeigbours[lc]; i++)
         {
@@ -115,7 +115,7 @@ Heap *SEARCH_LAYER(Graph *graph, vec q, uint32 lc)
 
                 float32 dist = l2_sq_distance((vec *)graph->nodes[neigbour->id].data, &q);
 
-                if (dist < furthestElementQ->dist || w->size < graph->efsearch)
+                if (dist < furthestElementQ.dist || w->size < graph->efsearch)
                 {
                     heap_insert(c, neigbour->id, dist);
                     heap_insert(w, neigbour->id, dist);
