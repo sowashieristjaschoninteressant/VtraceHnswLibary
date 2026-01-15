@@ -147,7 +147,7 @@ void INSERT_POP_MAXHEAP_TEST(){
         before = temp;
     }
     
-    HNSW_LOG("INSERT_POP_MAXHEAP_WORKS!\n");
+    HNSW_LOG("INSERT_POP_MAXHEAP_WORKS!");
     fflush(stdout);
 
     heap_dispose(heap);
@@ -159,8 +159,30 @@ void HEAP_TESTS(){
     HNSW_LOG("STARTING HEAP TESTS");
     INSERT_POP_MAXHEAP_TEST();
     INSERT_POP_MINHEAP_TEST();
+    DETERMINISTIC_INSERTPOP_TEST();
     HNSW_LOG("HEAP TESTS SUCCESSFULLY FINISHED");
     return;
+}
+
+ void DETERMINISTIC_INSERTPOP_TEST(){
+    const uint32 size = 10;
+    Heap* heap = heap_init(size, max_cmp);
+    float32 sValues[size] = {1,2,3,4,5,6,7,8,9,10};
+    float32 fValues[size] = { 10, 9,8,7,6,5,4,3,2,1};
+
+    for(uint32 i = 0; i < size; i++){
+        heap_insert(heap,i ,sValues[i]);
+    }
+    uint32 j = 0;
+    while(heap->size > 0 ){
+        heapItem* current = heapPop(heap);
+         printf("dist: %f, id: %i\n", current->dist, current->id );
+
+        HNSW_ASSERT(current->dist == fValues[j++]);
+    }
+
+    HNSW_LOG("DETERMINISTIC INSERTPOP WORKS!");
+
 }
 
 /*
@@ -170,6 +192,42 @@ Graph Tests
 ===========================
 
 */
+
+void SELECT_NEAREST_NABOURS(){
+
+     // Example distances for candidates
+    float distances[] = {10.5, 2.3, 7.7, 4.4, 6.6, 1.1, 8.8};
+    uint32 num_candidates = sizeof(distances) / sizeof(distances[0]);
+    uint32 M = 3;  // Number of nearest neighbors to select
+
+    // Step 1: Create a max-heap of candidates
+    Heap *c = heap_init(num_candidates, max_cmp);
+    for (uint32 i = 0; i < num_candidates; i++) {
+        heap_insert(c, i, distances[i]);
+    }
+
+    printf("Candidates in max-heap order (root = largest distance):\n");
+    for (uint32 i = 0; i < c->size; i++) {
+        printf("id=%u dist=%.2f\n", c->data[i]->id, c->data[i]->dist);
+    }
+
+    // Step 2: Select M nearest neighbors
+    Heap *m = SELECT_NEIGBOURS_SIMPLE(c, M);
+
+    // Step 3: Pop from the resulting max-heap to get M closest
+    printf("\nSelected %u nearest neighbors (max-heap root = farthest of the closest):\n", M);
+    while (m->size > 0) {
+        heapItem *item = heapPop(m);
+        printf("id=%u dist=%.2f\n", item->id, item->dist);
+    }
+
+    // Cleanup
+    heap_dispose(c);
+    heap_dispose(m);
+
+
+
+}
 
 void SIMPLE_SEARCH_LAYERTEST(){
 
@@ -188,7 +246,6 @@ void SIMPLE_SEARCH_LAYERTEST(){
     }
     HNSW_LOG("SEARCH-LAYER WORKING");
     heap_dispose(results);
-    
 }
 
  void INIT_GRAPH_TEST(){
@@ -218,5 +275,6 @@ void SIMPLE_SEARCH_LAYERTEST(){
     INIT_GRAPH_TEST();
     SIMPLE_SEARCH_LAYERTEST();
 
-   
+   SELECT_NEAREST_NABOURS();
+   HNSW_LOG("GRAPH TESTS RUN SUCESSFULLY!");
 }

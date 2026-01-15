@@ -18,7 +18,7 @@ HNSW_INLINE void swap(void** a, void** b){
 }
 
 HNSW_INLINE void siftDown(Heap* heap, uint32 index){
-    while(1){
+    while(index < heap->size){
         uint32 l = left(index), r = right(index);
         uint32 best = index;
 
@@ -78,30 +78,25 @@ void heap_dispose(Heap* heap){
 }
 
 void heap_insert(Heap* heap, uint32 id, float32 dist){
-    int32 i;
-
-    if(heap->size > heap->capacity){
-        // we care later about reallocation basically this should never happen i will allways have fixed size heap
-        printf("[-] heap has aleready reached maximum size\n");
+   if(heap->size >= heap->capacity){
+        printf("[-] heap has already reached maximum size\n");
         exit(EXIT_FAILURE);
     }
 
-    heapItem* item = (heapItem*) &heap->pool[heap->size];
-
+    // Copy into heap->pool
+    heapItem* item = &heap->pool[heap->size];
     item->id = id;
     item->dist = dist;
-    
-    heap->data[heap->size] = item;
-    i = heap->size++;
 
+    // Add to data array
+    heap->data[heap->size] = item;
+    uint32 i = heap->size++;
+
+    // Percolate up
     while(i > 0){
         uint32 p = parent(i);
-
-        if(heap->compareFunc(heap->data[p], heap->data[i]) <= 0){
-            break;
-        }
-
-        swap( (void**) &heap->data[i],(void**) &heap->data[p]);
+        if(heap->compareFunc(heap->data[p], heap->data[i]) <= 0) break;
+        swap((void**)&heap->data[i], (void**)&heap->data[p]);
         i = p;
     }
 

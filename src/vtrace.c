@@ -19,6 +19,28 @@ int VTlevelSample(uint32 lMax, float32 level_mult)
     return level > lMax ? lMax : level;
 }
 
+/*Algorithm 3 SELECT-NEIGHBORS-SIMPLE(q, C, M) 
+Input: base element q,
+ candidate elements C, number of neighbors to return M 
+ Output: M nearest elements to q return M nearest elements from C to q*/
+Heap *SELECT_NEIGBOURS_SIMPLE(Heap *c, uint32 M)
+{
+    Heap *m = heap_init(M, max_cmp);
+    while (c->size > 0)
+    {
+        heapItem *current = heapPop(c);
+        if (m->size < M)
+        {
+            heap_insert(m, current->id, current->dist);
+        }
+        else if (current->dist < heapPeek(m)->dist)
+        {
+            heapPop(m);
+            heap_insert(m, current->id, current->dist);
+        }
+    }
+    return m;
+}
 
 /**
  Algorithm 2
@@ -53,11 +75,12 @@ Heap *SEARCH_LAYER(Graph *graph, vec q, uint32 lc)
     Heap *w = heap_init(graph->efsearch, max_cmp); // closest results
 
     // TODO: after aproximatly 3 Billion searches this should overflow so i need to detect that and memset the visited list also if my nodes increase so should my visited List
-    
+
     incVisitedMark(graph);
 
-    if(graph->visited.visited_mark == 0 ){
-        memset(graph->visited.visited,0, sizeof(uint32) * graph->visited.size);
+    if (graph->visited.visited_mark == 0)
+    {
+        memset(graph->visited.visited, 0, sizeof(uint32) * graph->visited.size);
     }
 
     markNodeVisited(graph, graph->entrypoint->id);
@@ -72,7 +95,7 @@ Heap *SEARCH_LAYER(Graph *graph, vec q, uint32 lc)
         heapItem *current = heapPop(c);
         heapItem *furthestElementQ = heapPeek(w);
 
-        if ( w->size >= graph->efsearch && current->dist > furthestElementQ->dist)
+        if (w->size >= graph->efsearch && current->dist > furthestElementQ->dist)
         {
             HNSW_LOG("all elements are evaluated in searchLayer");
             // all elements are evaluated;;;;;
@@ -83,11 +106,11 @@ Heap *SEARCH_LAYER(Graph *graph, vec q, uint32 lc)
 
         for (uint32 i = 0; i < currentNode->numNeigbours[lc]; i++)
         {
-              node *neigbour = &graph->nodes[currentNode->neigbours[lc][i]];
+            node *neigbour = &graph->nodes[currentNode->neigbours[lc][i]];
 
             if (graph->visited.visited[neigbour->id] != graph->visited.visited_mark)
             {
-                
+
                 markNodeVisited(graph, neigbour->id);
 
                 float32 dist = l2_sq_distance((vec *)graph->nodes[neigbour->id].data, &q);
@@ -98,7 +121,8 @@ Heap *SEARCH_LAYER(Graph *graph, vec q, uint32 lc)
                     heap_insert(w, neigbour->id, dist);
                 }
 
-                if(w->size > graph->efsearch){
+                if (w->size > graph->efsearch)
+                {
                     heapPop(w);
                 }
             }
@@ -106,6 +130,6 @@ Heap *SEARCH_LAYER(Graph *graph, vec q, uint32 lc)
     }
 
     heap_dispose(c);
-    
+
     return w;
 }

@@ -28,7 +28,7 @@ extern int VTlevelSample(uint32,float32);
 
 // ALGORITHMS
 Heap* SEARCH_LAYER( Graph* graph ,vec q, uint32 lc);
-
+Heap *SELECT_NEIGBOURS_SIMPLE(Heap *c, uint32 M);
 // public API
 typedef struct Graph HNSW;
 
