@@ -6,6 +6,6 @@ int main(int argc, char** argw){
     
     HEAP_TESTS();
     GRAPH_TESTS();
-    
+    ARENA_TESTS();
     return EXIT_SUCCESS;
 }

@@ -10,6 +10,7 @@ VT_graph *initializeGraph(uint32 maxLayer, uint32 efConstruction, uint32 efSearc
 
     // seed random algorithm
     srand((int)time(NULL));
+
     if( M_maxNeigbours <= 0){
         graph->M_maxNeigbours = DEFAULT_MAX_NEIGBOURS;
     }else{
@@ -25,6 +26,23 @@ VT_graph *initializeGraph(uint32 maxLayer, uint32 efConstruction, uint32 efSearc
     graph->minHeap = heap_init(graph->efconstruction, min_cmp);
 
     return graph;
+}
+
+node* makeNode( Graph* graph ,vec v, uint32 id, uint32 nodeLevel, uint32 maxNeigbours){
+
+    hnswNode* node = hnsw_alloc_mem(sizeof(hnswNode));
+    node->id = id;
+    node->level = nodeLevel;
+    node->numNeigbours = 0;
+    node->v = v;
+    node->neigbours = hnsw_alloc_mem(sizeof(uint32*) * nodeLevel);
+    
+    for(uint32 i = 0; i < nodeLevel; i++){
+        node->neigbours[i] = hnsw_alloc_mem(sizeof(uint32) * maxNeigbours);
+    }
+
+    return node;
+
 }
 
 visitedList initvList(uint32 size)

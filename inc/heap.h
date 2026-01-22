@@ -3,12 +3,11 @@
 #include "vtraceCommon.h"
 
 
-
-
-
 struct heapItem {
+
+    void* data;
     uint32 id;
-    float32 dist;
+    float32 dist; // key
 };
 typedef struct heapItem heapItem;
 
@@ -37,7 +36,12 @@ HNSW_INLINE void siftDown(Heap* heap, uint32 index);
 // exposed api functions
 extern Heap* heap_init(uint32 capacity, cmp cmpFunc);
 extern void heap_dispose(Heap* heap);
-extern void heap_insert(Heap* heap, uint32 id, float32 dist);
+extern void heap_insert(Heap* heap, uint32 id, float32 dist, void* data);
 extern heapItem heapPop(Heap* heap);
 extern heapItem heapPeek(Heap* heap);
+extern void debugPrintHeap(Heap* heap);
+
+#define MAX_HEAP(capacity) heap_init((uint32) capacity, max_cmp);
+#define MIN_HEAP(capacity) heap_init((uint32) capacity, min_cmp);
+
 #endif

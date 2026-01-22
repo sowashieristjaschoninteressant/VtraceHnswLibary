@@ -20,15 +20,16 @@
 #include "vec.h"
 #include "graph.h"
 
-
 extern float VTsearch(Graph*, float vec);
 extern void VTinsert(Graph*, float vec);
 
 extern int VTlevelSample(uint32,float32);
 
 // ALGORITHMS
-Heap* SEARCH_LAYER( Graph* graph ,vec q, uint32 lc);
-Heap *SELECT_NEIGBOURS_SIMPLE(Heap *c, uint32 M);
+Heap *SEARCH_LAYER(Graph *graph, vec q,uint32 ef, uint32 lc);
+Heap* SELECT_NEIGBOURS_SIMPLE(Heap *c, uint32 M);
+void INSERT(Graph* graph,vec vec,uint32 M, uint32 Mmax, uint32 efConstruction, uint32 ml);
+
 // public API
 typedef struct Graph HNSW;
 

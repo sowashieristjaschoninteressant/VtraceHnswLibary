@@ -2,7 +2,6 @@
 #include "stdio.h"
 #include "string.h"
 
-
 static inline float32 randf(){
     return (float)rand() / (float) RAND_MAX;
 }
@@ -14,7 +13,7 @@ static inline float32 getRandFloat(float32 min, float32 max){
 // generate randome float array
 float32* generateRFA(uint32 size, float32 min, float32 max){
 
-    float32* farray = malloc(sizeof(float32) * size);
+    float32* farray = hnsw_alloc_mem(sizeof(float32) * size);
     assert(farray);
 
     for(uint32 i = 0; i < size; i++){
@@ -38,7 +37,7 @@ Graph* mockGraphOneLayer(uint32 efSearch){
     float32 vals2[] = {0.0f,1.0f};
     float32 vals3[] = {1.0f,1.0f};
     
-    vec* testVectores= malloc(sizeof(vec) * vectorCount);
+    vec* testVectores= hnsw_alloc_mem(sizeof(vec) * vectorCount);
     HNSW_ASSERT(testVectores);
 
     testVectores[0] = make_vec(2, vals0);
@@ -46,22 +45,22 @@ Graph* mockGraphOneLayer(uint32 efSearch){
     testVectores[2] = make_vec(2, vals2);
     testVectores[3] = make_vec(2, vals3);
 
-    node* nodes = malloc(sizeof(node) * 4 );
+    node* nodes = hnsw_alloc_mem(sizeof(node) * 4 );
     HNSW_ASSERT(nodes);
 
     for(uint32 i = 0; i < 4; i++){
         
-        nodes[i].data = (vec*) &testVectores[i];
+        nodes[i].v = testVectores[i];
          
 
-        nodes[i].numNeigbours = malloc(sizeof(uint32) * LAYERS);
+        nodes[i].numNeigbours = hnsw_alloc_mem( (sizeof(uint32) * LAYERS));
         HNSW_ASSERT(nodes[i].numNeigbours);
         nodes[i].numNeigbours[0] = 0;
 
-        nodes[i].neigbours = malloc(sizeof(uint32*) * LAYERS);
+        nodes[i].neigbours = hnsw_alloc_mem(sizeof(uint32*) * LAYERS);
         HNSW_ASSERT(nodes[i].neigbours);
 
-        nodes[i].neigbours[0] = malloc(sizeof(uint32) * M_MAXNEIGBOURS);
+        nodes[i].neigbours[0] = hnsw_alloc_mem(sizeof(uint32) * M_MAXNEIGBOURS);
          HNSW_ASSERT(nodes[i].neigbours[0]);
          nodes[i].id = i;
     }
@@ -102,8 +101,9 @@ void INSERT_POP_MINHEAP_TEST(){
     Heap* heap = heap_init(fsize, min_cmp);
     float32* farray = generateRFA(fsize, 0.0f, 20000);
 
+    
     for(int32 i = 0; i < fsize; i++){
-        heap_insert(heap, i, farray[i]);
+        heap_insert(heap, i, farray[i],NULL);
     }
 
     heapItem before =  heapPop(heap);
@@ -120,7 +120,7 @@ void INSERT_POP_MINHEAP_TEST(){
     HNSW_LOG("[+] INSERT_POP_MINHEAP WORKS!");
     fflush(stdout);
     heap_dispose(heap);
-    free(farray);
+    hnsw_free_mem(farray);
 
     return;
 }
@@ -132,7 +132,7 @@ void INSERT_POP_MAXHEAP_TEST(){
 
     for(int32 i = 0; i < fsize; i++){
 
-        heap_insert(heap,i, farray[i]);
+        heap_insert(heap,i, farray[i], NULL);
     }
 
     heapItem before = heapPop(heap);
@@ -171,12 +171,11 @@ void HEAP_TESTS(){
     float32 fValues[size] = { 10, 9,8,7,6,5,4,3,2,1};
 
     for(uint32 i = 0; i < size; i++){
-        heap_insert(heap,i ,sValues[i]);
+        heap_insert(heap,i ,sValues[i], NULL);
     }
     uint32 j = 0;
     while(heap->size > 0 ){
         heapItem current = heapPop(heap);
-         printf("dist: %f, id: %i\n", current.dist, current.id );
 
         HNSW_ASSERT(current.dist == fValues[j++]);
     }
@@ -184,6 +183,96 @@ void HEAP_TESTS(){
     HNSW_LOG("DETERMINISTIC INSERTPOP WORKS!");
 
 }
+
+/*
+
+===========================
+Arena Tests
+===========================
+
+*/
+
+
+
+ void ARENA_TESTS(){
+    HNSW_LOG("STARTING ARENA TESTS");
+    ARENA_ALLOCATEBIG_TEST();
+    ARENA_ALLOCATEOVERFLOW_TEST();
+    ARENA_ALIGNMENT_TEST();
+    HNSW_LOG("ENDING ALLOCATION TESTS");
+ }
+
+ void ARENA_ALLOCATEBIG_TEST(){
+    uint32 arenaSize = KB(1);
+    int8 magicNr = 0x5;
+    hnswArena* arena = init_arena(arenaSize);
+
+    HNSW_ASSERT(arena);
+    HNSW_ASSERT(arena->base);
+    HNSW_ASSERT(arena->size == arenaSize);
+
+    int8* byteArray = arena_alloc(arena, arenaSize, alignof(int8));
+    HNSW_ASSERT(byteArray);
+
+    memset(byteArray, magicNr, arenaSize);
+
+    for(uint32 i = 0; i < arenaSize; i++ ){
+        HNSW_ASSERT(byteArray[i] == magicNr);
+    }
+
+  
+
+    HNSW_LOG("ARENA ALLOCATION of 1KB works");
+    arena_destroy(arena);
+
+ }
+
+
+ void ARENA_ALLOCATEOVERFLOW_TEST(){
+
+    hnswArena* arena = init_arena(5); // 5 bytes arena
+
+    HNSW_ASSERT(arena->base);
+    HNSW_ASSERT(arena);
+
+
+    int8* byteArray = arena_alloc(arena,10, 1);
+
+    HNSW_ASSERT(!byteArray);
+
+    HNSW_LOG("ALLOCATOR CATCHES OVERFLOW!");
+    HNSW_LOG("Arena allocation overflow test succsessfull!");
+    arena_destroy(arena);
+ }
+
+
+ void ARENA_ALIGNMENT_TEST(){
+
+     hnswArena* arena = init_arena(KB(1));
+
+     HNSW_ASSERT(arena);
+     HNSW_ASSERT(arena->base);
+    
+     hnswNode* node = arena_alloc(arena, sizeof(hnswNode), alignof(hnswNode));
+     HNSW_ASSERT(node);
+    // try to accsess data in the pointer check for missalignment errors
+     node->id = 0;
+     node->level = 10;
+     node->numNeigbours = arena_alloc(arena, sizeof(uint32) * 10, alignof(uint32));
+
+     HNSW_ASSERT(node->numNeigbours);
+     Graph* graph = arena_alloc(arena, sizeof(Graph), alignof(Graph));
+     HNSW_ASSERT(graph);
+    // try to accsess data in the pointer check for missalignment errors
+     graph->efsearch = 20;
+     graph->maxLayer = 30;
+
+     HNSW_LOG("ARENA ALIGNMENT TESTS SUCCSESSFULLY FINISHED!");
+
+     arena_destroy(arena);
+ }
+
+
 
 /*
 
@@ -203,13 +292,11 @@ void SELECT_NEAREST_NABOURS(){
     // Step 1: Create a max-heap of candidates
     Heap *c = heap_init(num_candidates, max_cmp);
     for (uint32 i = 0; i < num_candidates; i++) {
-        heap_insert(c, i, distances[i]);
+        heap_insert(c, i, distances[i], NULL);
     }
 
     printf("Candidates in max-heap order (root = largest distance):\n");
-    for (uint32 i = 0; i < c->size; i++) {
-        printf("id=%u dist=%.2f\n", c->data[i].id, c->data[i].dist);
-    }
+    debugPrintHeap(c);
 
     // Step 2: Select M nearest neighbors
     Heap *m = SELECT_NEIGBOURS_SIMPLE(c, M);
@@ -232,7 +319,7 @@ void SIMPLE_SEARCH_LAYERTEST(){
     // prepare
     Graph* graph = mockGraphOneLayer(4);
     vec query = make_vec(2, (float[]) {0.1f, 0.1f});
-    Heap* results = SEARCH_LAYER(graph, query, 0);
+    Heap* results = SEARCH_LAYER(graph, query, graph->efsearch, 0);
 
     const uint32 expectedResultIds[] = {3, 1 ,2 ,0};
     int resultIteration = 0;
@@ -273,6 +360,6 @@ void SIMPLE_SEARCH_LAYERTEST(){
     INIT_GRAPH_TEST();
     SIMPLE_SEARCH_LAYERTEST();
 
-   SELECT_NEAREST_NABOURS();
+    SELECT_NEAREST_NABOURS();
    HNSW_LOG("GRAPH TESTS RUN SUCESSFULLY!");
 }

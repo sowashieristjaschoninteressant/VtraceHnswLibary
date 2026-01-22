@@ -1,22 +1,23 @@
 #ifndef HNSW_GRAPH_H
 #define HNSW_GRAPH_H
 
-#include "vtraceCommon.h"
+#include "alloc.h"
 #include "heap.h"
+#include "vec.h"
 
 #define START_LAYER_NODES 10000
 #define DEFAULT_MAX_NEIGBOURS 64
 
 typedef struct {
   uint64 id;
-  uint32 maxLevel;
+  uint32 level;
   uint32** neigbours;
   uint32* numNeigbours;
 
-  void* data;
+  vec v;
 } node;
 
-typedef node VT_node;
+typedef node hnswNode;
 
 struct hnsw_visitedList{
   uint32* visited;
@@ -36,6 +37,7 @@ visitedList initvList(uint32 size);
   uint32 M_maxNeigbours;
   uint32 maxLayer;
   uint64 count;
+  uint64 maxNodeCount;
 
   visitedList visited;
   node* nodes;
@@ -46,7 +48,7 @@ visitedList initvList(uint32 size);
 typedef struct Graph Graph;
 
 typedef Graph VT_graph;
-
+extern node* makeNode(vec v, uint32 id, uint32 nodeLevel, uint32 maxNeigbours);
 extern VT_graph *initializeGraph(uint32 maxLayer, uint32 efConstruction, uint32 efSearch, uint32 M_maxNeigbours);
 extern void uninitializeGraph(VT_graph* graph);
 extern void VTaddNeigbour(node* target, uint32 neighbourId, uint32 layer, uint32 M_MAXneigbours);

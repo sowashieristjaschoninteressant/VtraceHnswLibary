@@ -77,7 +77,7 @@ void heap_dispose(Heap* heap){
     free(heap);
 }
 
-void heap_insert(Heap* heap, uint32 id, float32 dist){
+void heap_insert(Heap* heap, uint32 id, float32 dist, void* data){
    if(heap->size >= heap->capacity){
         printf("[-] heap has already reached maximum size\n");
         exit(EXIT_FAILURE);
@@ -86,6 +86,7 @@ void heap_insert(Heap* heap, uint32 id, float32 dist){
    uint32 i = heap->size++;
    heap->data[i].dist = dist;
    heap->data[i].id = id;
+   heap->data[i].data = data;
 
     // Percolate up
     while(i > 0){
@@ -115,5 +116,11 @@ heapItem heapPeek(Heap* heap){
     return heap->data[0];
 }
 
+void debugPrintHeap(Heap* heap){
 
+    for(uint32 i = 0; i < heap->size; i++){
+
+        printf("id=%i, dist=%.2f\n", heap->data[i].id, heap->data[i].dist);
+    }
+}
 

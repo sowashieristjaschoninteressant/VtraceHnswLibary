@@ -7,7 +7,7 @@
  * @param level_mult
  * @return int
  */
-int VTlevelSample(uint32 lMax, float32 level_mult)
+int32 VTlevelSample(uint32 lMax, float32 level_mult)
 {
 
     float u = (float)rand() / ((float)RAND_MAX + 1.0f);
@@ -17,6 +17,67 @@ int VTlevelSample(uint32 lMax, float32 level_mult)
     uint32 level = (int)(-logf(u) * level_mult);
 
     return level > lMax ? lMax : level;
+}
+
+/*
+Algorithm 1
+INSERT(hnsw, q, M, Mmax, efConstruction, mL)
+Input: multilayer graph hnsw, new element q, number of established
+connections M, maximum number of connections for each element
+per layer Mmax, size of the dynamic candidate list efConstruction, nor-
+malization factor for level generation mL
+Output: update hnsw inserting element q
+1 W ← ∅ // list for the currently found nearest elements
+2 ep ← get enter point for hnsw
+3 L ← level of ep // top layer for hnsw
+4 l ← ⌊-ln(unif(0..1))∙mL⌋ // new element’s level
+5 for lc ← L … l+1
+6 W ← SEARCH-LAYER(q, ep, ef=1, lc)
+7 ep ← get the nearest element from W to q
+8 for lc ← min(L, l) … 0
+9 W ← SEARCH-LAYER(q, ep, efConstruction, lc)
+10 neighbors ← SELECT-NEIGHBORS(q, W, M, lc) // alg. 3 or alg. 4
+11 add bidirectionall connectionts from neighbors to q at layer lc
+12 for each e ∈ neighbors // shrink connections if needed
+13 eConn ← neighbourhood(e) at layer lc
+14 if │eConn│ > Mmax // shrink connections of e
+// if lc = 0 then Mmax = Mmax0
+15 eNewConn ← SELECT-NEIGHBORS(e, eConn, Mmax, lc)
+// alg. 3 or alg. 4
+16 set neighbourhood(e) at layer lc to eNewConn
+17 ep ← W
+18 if l > L
+19 set enter point for hnsw to q
+ */
+void INSERT(Graph* graph,vec vec,uint32 M, uint32 Mmax, uint32 efConstruction, uint32 ml){
+    
+    hnswNode* ep,* newNode;
+    Heap* w = MIN_HEAP(efConstruction);
+    int32 nodeLevel = VTlevelSample(graph->maxLayer, ml);
+    int32 id = graph->count++;
+
+    newNode = makeNode(vec,id, nodeLevel, Mmax);
+
+    if(!graph->entrypoint){
+        graph->entrypoint = newNode;
+        graph->nodes[id] = newNode;
+        return;
+    }
+
+    ep = graph->entrypoint;
+
+    for( uint32 j = nodeLevel; j < graph->entrypoint->level; j++ ){
+        Heap* W = SEARCH_LAYER(graph, vec, 1 ,j);
+
+        heapItem first = heapPeek(W);
+
+      //  for(uint32 i = j; i > min(nodeLevel, ep->level); i--){
+
+       // }
+
+    }
+    
+
 }
 
 /*Algorithm 3 SELECT-NEIGHBORS-SIMPLE(q, C, M) 
@@ -31,12 +92,12 @@ Heap *SELECT_NEIGBOURS_SIMPLE(Heap *c, uint32 M)
         heapItem current = heapPop(c);
         if (m->size < M)
         {
-            heap_insert(m, current.id, current.dist);
+            heap_insert(m, current.id, current.dist, NULL);
         }
         else if (current.dist < heapPeek(m).dist)
         {
             heapPop(m);
-            heap_insert(m, current.id, current.dist);
+            heap_insert(m, current.id, current.dist, NULL);
         }
     }
     return m;
@@ -69,10 +130,10 @@ Output: ef closest neighbors to q
  */
 
 // node* SEARCH_LAYER(vec v, node* ep, uint32 ef, uint32 lc)
-Heap *SEARCH_LAYER(Graph *graph, vec q, uint32 lc)
+Heap *SEARCH_LAYER(Graph *graph, vec q,uint32 ef, uint32 lc)
 {
-    Heap *c = heap_init(graph->efsearch, min_cmp); // candidate list
-    Heap *w = heap_init(graph->efsearch, max_cmp); // closest results
+    Heap *c = heap_init(ef, min_cmp); // candidate list
+    Heap *w = heap_init(ef, max_cmp); // closest results
 
     // TODO: after aproximatly 3 Billion searches this should overflow so i need to detect that and memset the visited list also if my nodes increase so should my visited List
 
@@ -85,20 +146,20 @@ Heap *SEARCH_LAYER(Graph *graph, vec q, uint32 lc)
 
     markNodeVisited(graph, graph->entrypoint->id);
 
-    float32 epDistance = l2_sq_distance((vec *)graph->entrypoint->data, &q);
+    float32 epDistance = l2_sq_distance((vec*) &graph->entrypoint->v, &q);
 
-    heap_insert(c, graph->entrypoint->id, epDistance);
-    heap_insert(w, graph->entrypoint->id, epDistance);
+    heap_insert(c, graph->entrypoint->id, epDistance, NULL);
+    heap_insert(w, graph->entrypoint->id, epDistance, NULL);
 
     while (c->size > 0)
     {
         heapItem current = heapPop(c);
         heapItem furthestElementQ = heapPeek(w);
 
-        if (w->size >= graph->efsearch && current.dist > furthestElementQ.dist)
+        if (w->size >= ef && current.dist > furthestElementQ.dist)
         {
             HNSW_LOG("all elements are evaluated in searchLayer");
-            // all elements are evaluated;;;;;
+            
             break;
         }
 
@@ -113,15 +174,15 @@ Heap *SEARCH_LAYER(Graph *graph, vec q, uint32 lc)
 
                 markNodeVisited(graph, neigbour->id);
 
-                float32 dist = l2_sq_distance((vec *)graph->nodes[neigbour->id].data, &q);
+                float32 dist = l2_sq_distance( &graph->nodes[neigbour->id].v, &q);
 
-                if (dist < furthestElementQ.dist || w->size < graph->efsearch)
+                if (dist < furthestElementQ.dist || w->size < ef)
                 {
-                    heap_insert(c, neigbour->id, dist);
-                    heap_insert(w, neigbour->id, dist);
+                    heap_insert(c, neigbour->id, dist, NULL);
+                    heap_insert(w, neigbour->id, dist, NULL);
                 }
 
-                if (w->size > graph->efsearch)
+                if (w->size > ef)
                 {
                     heapPop(w);
                 }

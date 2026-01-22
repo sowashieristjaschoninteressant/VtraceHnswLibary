@@ -15,7 +15,7 @@ LIBARY INCLUDES
 #include "time.h"
 #include "assert.h"
 #include "errno.h"
-
+#include "stdalign.h"
 /*
 =====================
 CUSTOM DEFINITIONS
