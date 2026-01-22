@@ -48,10 +48,15 @@ visitedList initvList(uint32 size);
 typedef struct Graph Graph;
 
 typedef Graph VT_graph;
-extern node* makeNode(vec v, uint32 id, uint32 nodeLevel, uint32 maxNeigbours);
-extern VT_graph *initializeGraph(uint32 maxLayer, uint32 efConstruction, uint32 efSearch, uint32 M_maxNeigbours);
+extern void makeNode(node* node, vec v,uint32 id, uint32 nodeLevel, uint32 maxNeigbours);
+extern VT_graph *initializeGraph(uint32 maxLayer, uint32 efConstruction, uint32 efSearch, uint32 M_maxNeigbours, uint32 maxNodeCount);
 extern void uninitializeGraph(VT_graph* graph);
 extern void VTaddNeigbour(node* target, uint32 neighbourId, uint32 layer, uint32 M_MAXneigbours);
+
+
+HNSW_INLINE node* getNode(Graph* g, uint32 id){
+  return &g->nodes[id];
+}
 
 HNSW_INLINE void incVisitedMark(Graph* g){
      g->visited.visited_mark++;

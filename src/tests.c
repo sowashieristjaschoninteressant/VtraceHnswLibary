@@ -30,7 +30,9 @@ Graph* mockGraphOneLayer(uint32 efSearch){
     const uint32 M_MAXNEIGBOURS = 2;
     const uint32 vectorCount = 4;
     const uint32 LAYERS = 1;
-    Graph* graph = initializeGraph(M_MAX_LAYER,EF_CONSTRUCTION, efSearch,M_MAXNEIGBOURS);
+    const uint32 maxNodeCount = 50000;
+
+    Graph* graph = initializeGraph(M_MAX_LAYER,EF_CONSTRUCTION, efSearch,M_MAXNEIGBOURS, maxNodeCount);
 
     float32 vals0[] = {0.0f,0.0f};
     float32 vals1[] = {1.0f,0.0f};
@@ -334,12 +336,13 @@ void SIMPLE_SEARCH_LAYERTEST(){
 }
 
  void INIT_GRAPH_TEST(){
+
     const uint32 maxLayer = 10;
     const uint32 efSearch = 20;
     const uint32 efConstruction = 40;
     const uint32 M_maxNeigbours = 10;
-
-    Graph* graph = initializeGraph(maxLayer, efConstruction, efSearch, M_maxNeigbours);
+    const uint32 maxNodeCount = 50000;
+    Graph* graph = initializeGraph(maxLayer, efConstruction, efSearch, M_maxNeigbours, maxNodeCount );
 
     HNSW_ASSERT(graph);
     HNSW_ASSERT(graph->efconstruction == efConstruction);

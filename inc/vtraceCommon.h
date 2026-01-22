@@ -42,6 +42,8 @@ utility MACROS
 #define HNSW_INLINE static inline
 #define HNSW_UNUSED(x) (void)(x)
 
+#define MIN(a,b) a > b ? b : a
+#define MAX(a,b) a > b ? a : b
 /*
 =====================
 DEBUG / assertions

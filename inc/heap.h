@@ -39,6 +39,7 @@ extern void heap_dispose(Heap* heap);
 extern void heap_insert(Heap* heap, uint32 id, float32 dist, void* data);
 extern heapItem heapPop(Heap* heap);
 extern heapItem heapPeek(Heap* heap);
+extern void heap_reset(Heap* heap);
 extern void debugPrintHeap(Heap* heap);
 
 #define MAX_HEAP(capacity) heap_init((uint32) capacity, max_cmp);

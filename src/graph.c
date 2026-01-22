@@ -1,10 +1,10 @@
 
 #include "graph.h"
 
-VT_graph *initializeGraph(uint32 maxLayer, uint32 efConstruction, uint32 efSearch, uint32 M_maxNeigbours)
+VT_graph *initializeGraph(uint32 maxLayer, uint32 efConstruction, uint32 efSearch, uint32 M_maxNeigbours, uint32 maxNodeCount)
 {
 
-    VT_graph *graph = malloc(sizeof(VT_graph));
+    VT_graph *graph = hnsw_alloc_mem(sizeof(VT_graph));
 
     HNSW_ASSERT(graph);
 
@@ -16,10 +16,15 @@ VT_graph *initializeGraph(uint32 maxLayer, uint32 efConstruction, uint32 efSearc
     }else{
         graph->M_maxNeigbours = M_maxNeigbours;
     }
+
     graph->efconstruction = efConstruction;
     graph->efsearch = efSearch;
     graph->maxLayer = maxLayer;
-    graph->nodes = NULL;
+    graph->maxNodeCount = maxNodeCount;
+
+    graph->nodes = hnsw_alloc_mem(sizeof(hnswNode) * graph->maxNodeCount);
+    graph->count = 0;    
+
     graph->entrypoint = NULL;
     graph->visited = initvList(START_LAYER_NODES);
     graph->maxHeap = heap_init(graph->efconstruction, max_cmp);
@@ -28,20 +33,24 @@ VT_graph *initializeGraph(uint32 maxLayer, uint32 efConstruction, uint32 efSearc
     return graph;
 }
 
-node* makeNode( Graph* graph ,vec v, uint32 id, uint32 nodeLevel, uint32 maxNeigbours){
+void makeNode(node* node, vec v,uint32 id, uint32 nodeLevel, uint32 maxNeigbours){
 
-    hnswNode* node = hnsw_alloc_mem(sizeof(hnswNode));
     node->id = id;
     node->level = nodeLevel;
     node->numNeigbours = 0;
     node->v = v;
     node->neigbours = hnsw_alloc_mem(sizeof(uint32*) * nodeLevel);
-    
+
     for(uint32 i = 0; i < nodeLevel; i++){
         node->neigbours[i] = hnsw_alloc_mem(sizeof(uint32) * maxNeigbours);
+        for(uint32 j = 0; j < maxNeigbours; j++){
+            // this will never overflow unless run on a supercomputer :0 with like 10000gb of ram xd
+            node->neigbours[i][j] = UINT32_MAX; // mark empty
+
+        }
     }
 
-    return node;
+ 
 
 }
 

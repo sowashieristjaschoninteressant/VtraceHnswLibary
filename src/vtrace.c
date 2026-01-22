@@ -54,29 +54,52 @@ void INSERT(Graph* graph,vec vec,uint32 M, uint32 Mmax, uint32 efConstruction, u
     hnswNode* ep,* newNode;
     Heap* w = MIN_HEAP(efConstruction);
     int32 nodeLevel = VTlevelSample(graph->maxLayer, ml);
-    int32 id = graph->count++;
+    uint32 id = graph->count++;
 
-    newNode = makeNode(vec,id, nodeLevel, Mmax);
+    newNode = &graph->nodes[id];
+
+    makeNode(newNode, vec,id, nodeLevel, Mmax);
+
+    #ifdef BILLION_SEARCH_HNSW
+    // this is a hot loop so lets just write it like this. this will never happen basically unless you save over 4Billion nodes in this structure but i belive no consumer hardware has even the memory capacity for smth like that
+    if(graph->count == UINT32_MAX){
+        HNSW_LOG("node ID overflow!");
+        abort();
+    }
+    #endif
 
     if(!graph->entrypoint){
         graph->entrypoint = newNode;
-        graph->nodes[id] = newNode;
         return;
     }
 
+    // top down greedy search firstly for entrypoint
     ep = graph->entrypoint;
-
-    for( uint32 j = nodeLevel; j < graph->entrypoint->level; j++ ){
+    for( uint32 j = nodeLevel; j > graph->entrypoint->level; j-- ){
         Heap* W = SEARCH_LAYER(graph, vec, 1 ,j);
-
-        heapItem first = heapPeek(W);
-
-      //  for(uint32 i = j; i > min(nodeLevel, ep->level); i--){
-
-       // }
-
+        ep = getNode( graph, heapPeek(W).id);
     }
-    
+
+    // search best neigbours for ever layer, iterate through results
+    for(uint32 i = min(ep->level, nodeLevel); i >= 0; i--){
+        Heap* resultHeap = SEARCH_LAYER(graph, vec, efConstruction, i );
+        
+        for(uint32 j = 0; j < efConstruction; j++){
+
+            hnswNode* temp =  getNode(graph , heapPop(resultHeap).id);
+            
+            if(temp->numNeigbours[i] < graph->M_maxNeigbours){
+
+               newNode->neigbours[i][newNode->numNeigbours[i]++] = temp->id;
+               temp->neigbours[i][temp->numNeigbours[i]++] = newNode->id;
+            }else{
+                
+            }
+            
+
+        }
+        
+    }
 
 }
 
@@ -86,7 +109,7 @@ Input: base element q,
  Output: M nearest elements to q return M nearest elements from C to q*/
 Heap *SELECT_NEIGBOURS_SIMPLE(Heap *c, uint32 M)
 {
-    Heap *m = heap_init(M, max_cmp);
+    Heap *m = MAX_HEAP(M);
     while (c->size > 0)
     {
         heapItem current = heapPop(c);

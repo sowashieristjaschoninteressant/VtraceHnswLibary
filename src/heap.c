@@ -116,6 +116,13 @@ heapItem heapPeek(Heap* heap){
     return heap->data[0];
 }
 
+
+
+void heap_reset(Heap* heap){
+
+    heap->size = 0;
+}
+
 void debugPrintHeap(Heap* heap){
 
     for(uint32 i = 0; i < heap->size; i++){
