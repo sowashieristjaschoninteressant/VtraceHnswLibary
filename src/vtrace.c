@@ -75,29 +75,39 @@ void INSERT(Graph* graph,vec vec,uint32 M, uint32 Mmax, uint32 efConstruction, u
 
     // top down greedy search firstly for entrypoint
     ep = graph->entrypoint;
-    for( uint32 j = nodeLevel; j > graph->entrypoint->level; j-- ){
+    for( int32 j = nodeLevel; j > graph->entrypoint->level; j-- ){
         Heap* W = SEARCH_LAYER(graph, vec, 1 ,j);
         ep = getNode( graph, heapPeek(W).id);
     }
 
     // search best neigbours for ever layer, iterate through results
-    for(uint32 i = min(ep->level, nodeLevel); i >= 0; i--){
-        Heap* resultHeap = SEARCH_LAYER(graph, vec, efConstruction, i );
+    for(int32 layer = MIN(ep->level, nodeLevel); layer >= 0; layer--){
+        Heap* resultHeap = SEARCH_LAYER(graph, vec, efConstruction, layer );
         
-        for(uint32 j = 0; j < efConstruction; j++){
+        Heap* selected = SELECT_NEIGBOURS_SIMPLE(resultHeap, M); // alg 3 for now might change that
 
-            hnswNode* temp =  getNode(graph , heapPop(resultHeap).id);
-            
-            if(temp->numNeigbours[i] < graph->M_maxNeigbours){
+        for(uint32 j = 0; j < selected->size; j++){
 
-               newNode->neigbours[i][newNode->numNeigbours[i]++] = temp->id;
-               temp->neigbours[i][temp->numNeigbours[i]++] = newNode->id;
+
+
+            hnswNode* node = getNode(graph,selected->data[j].id);
+
+            if(graph->M_maxNeigbours > node->numNeigbours[layer]){
+                node->neigbours[layer][node->numNeigbours[layer]++] = newNode->id;
             }else{
-                
+                //TODO: ok lets be honest i dont fucking understand how they chose another candidate... well i guess i need to find out the wild way
+                // select heuristic
+            }
+
+            if(graph->M_maxNeigbours > newNode->numNeigbours[layer]){
+                    newNode->neigbours[layer][newNode->numNeigbours[layer]++] = node->id;
+            }else{
+                //TODO: fuck finding out how to replace the fucking neigbours???!?
             }
             
-
+        
         }
+        
         
     }
 

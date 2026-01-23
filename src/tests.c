@@ -170,16 +170,16 @@ void HEAP_TESTS(){
     const uint32 size = 10;
     Heap* heap = heap_init(size, max_cmp);
     float32 sValues[size] = {1,2,3,4,5,6,7,8,9,10};
-    float32 fValues[size] = { 10, 9,8,7,6,5,4,3,2,1};
-
+    
     for(uint32 i = 0; i < size; i++){
         heap_insert(heap,i ,sValues[i], NULL);
     }
-    uint32 j = 0;
+    
+    uint32 i = 9;
     while(heap->size > 0 ){
         heapItem current = heapPop(heap);
 
-        HNSW_ASSERT(current.dist == fValues[j++]);
+        HNSW_ASSERT(current.dist == sValues[i--]);
     }
 
     HNSW_LOG("DETERMINISTIC INSERTPOP WORKS!");
@@ -257,11 +257,15 @@ Arena Tests
     
      hnswNode* node = arena_alloc(arena, sizeof(hnswNode), alignof(hnswNode));
      HNSW_ASSERT(node);
+
+     HNSW_ASSERT( ( (uintptr_t) node % alignof(hnswNode)) == 0);
     // try to accsess data in the pointer check for missalignment errors
      node->id = 0;
      node->level = 10;
      node->numNeigbours = arena_alloc(arena, sizeof(uint32) * 10, alignof(uint32));
-
+     
+     HNSW_ASSERT( ( (uintptr_t) node % alignof(uint32)) == 0);
+     
      HNSW_ASSERT(node->numNeigbours);
      Graph* graph = arena_alloc(arena, sizeof(Graph), alignof(Graph));
      HNSW_ASSERT(graph);
@@ -349,7 +353,7 @@ void SIMPLE_SEARCH_LAYERTEST(){
     HNSW_ASSERT(graph->efsearch == efSearch);
     HNSW_ASSERT(graph->M_maxNeigbours == M_maxNeigbours);
     HNSW_ASSERT(graph->maxLayer == maxLayer);
-
+    HNSW_ASSERT(graph->nodes);
     HNSW_ASSERT(graph->maxHeap);
     HNSW_ASSERT(graph->minHeap);
     HNSW_ASSERT(graph->visited.visited);

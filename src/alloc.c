@@ -72,3 +72,80 @@ void hnsw_free_mem(void* ptr){
 
     return ptr;
  }
+
+
+
+ hnsw_chainAllocator* init_chainArena(uint32 size, uint32 chunkSize){
+    hnsw_chainAllocator* chainArena = malloc(sizeof(chainArena));
+
+    if(!chainArena){
+        HNSW_LOG("cannot allocate chainAllocator out of memory");
+        abort();
+    }
+
+    chainArena->arenaPtr = malloc(sizeof(hnswArena*) * size);
+
+    if(!chainArena->arenaPtr){
+        HNSW_LOG("cannot alloate arenaPtrArray out of memory?");
+        abort();
+    }
+
+    for(uint32 i = 0; i < size; i++){
+
+        chainArena->arenaPtr[i] = init_arena(chunkSize);
+    }
+
+    chainArena->arraySize = size;
+    chainArena->chunkSize = chunkSize;
+
+ }
+ void chainArena_destroy(hnsw_chainAllocator* chainAllocator){
+    if(!chainAllocator || !chainAllocator->arenaPtr) return;
+    
+    for(uint32 i = 0; i < chainAllocator->arraySize; i++){
+        free(chainAllocator->arenaPtr[i]);
+    }
+
+    free(chainAllocator->arenaPtr);
+ }
+ void* chainArenaAlloc( hnsw_chainAllocator* chainAllocator ,uint32 size, uint32 alignment){
+    
+    void* ptr = arena_alloc( chainAllocator->arenaPtr[chainAllocator->current], size, alignment);
+    
+    if(ptr){
+        return ptr;
+    }
+
+    if(chainAllocator->current + 1 < chainAllocator->arraySize){
+        chainAllocator->current++;
+        return arena_alloc(
+            chainAllocator->arenaPtr[chainAllocator->current],
+            size,
+            alignment
+        );
+    }
+
+    /* if not we need to grow chainArena*/
+
+    uint32 oldSize = chainAllocator->arraySize;
+    uint32 newSize = oldSize * 2;
+
+    chainAllocator->arraySize = newSize;
+    void* new_ptr = realloc(chainAllocator->arenaPtr, chainAllocator->arraySize * sizeof(*chainAllocator->arenaPtr));
+    
+    if(!new_ptr){
+        HNSW_LOG("cannot reallocate arenaChunks out of memory?");
+        abort();
+    }
+
+    chainAllocator->arenaPtr = new_ptr;
+
+    for(uint32 i = oldSize; i < newSize; i++){
+        chainAllocator->arenaPtr[i] = init_arena(chainAllocator->chunkSize);
+    }
+    chainAllocator->current = oldSize;
+
+
+    return arena_alloc(chainAllocator->arenaPtr[chainAllocator->current], size, alignment);
+
+ }
