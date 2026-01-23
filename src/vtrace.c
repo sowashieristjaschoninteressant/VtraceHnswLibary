@@ -50,9 +50,7 @@ Output: update hnsw inserting element q
 19 set enter point for hnsw to q
  */
 void INSERT(Graph* graph,vec vec,uint32 M, uint32 Mmax, uint32 efConstruction, uint32 ml){
-    
     hnswNode* ep,* newNode;
-    Heap* w = MIN_HEAP(efConstruction);
     int32 nodeLevel = VTlevelSample(graph->maxLayer, ml);
     uint32 id = graph->count++;
 
@@ -73,14 +71,14 @@ void INSERT(Graph* graph,vec vec,uint32 M, uint32 Mmax, uint32 efConstruction, u
         return;
     }
 
-    // top down greedy search firstly for entrypoint
+   
     ep = graph->entrypoint;
     for( int32 j = nodeLevel; j > graph->entrypoint->level; j-- ){
         Heap* W = SEARCH_LAYER(graph, vec, 1 ,j);
         ep = getNode( graph, heapPeek(W).id);
     }
 
-    // search best neigbours for ever layer, iterate through results
+    
     for(int32 layer = MIN(ep->level, nodeLevel); layer >= 0; layer--){
         Heap* resultHeap = SEARCH_LAYER(graph, vec, efConstruction, layer );
         
@@ -88,29 +86,20 @@ void INSERT(Graph* graph,vec vec,uint32 M, uint32 Mmax, uint32 efConstruction, u
 
         for(uint32 j = 0; j < selected->size; j++){
 
-
-
             hnswNode* node = getNode(graph,selected->data[j].id);
 
-            if(graph->M_maxNeigbours > node->numNeigbours[layer]){
+            if(graph->M_maxNeigbours > node->numNeigbours[layer] && graph->M_maxNeigbours > newNode->numNeigbours[layer]){
                 node->neigbours[layer][node->numNeigbours[layer]++] = newNode->id;
-            }else{
-                //TODO: ok lets be honest i dont fucking understand how they chose another candidate... well i guess i need to find out the wild way
-                // select heuristic
+                newNode->neigbours[layer][newNode->numNeigbours[layer]++] = node->id;
             }
-
-            if(graph->M_maxNeigbours > newNode->numNeigbours[layer]){
-                    newNode->neigbours[layer][newNode->numNeigbours[layer]++] = node->id;
-            }else{
-                //TODO: fuck finding out how to replace the fucking neigbours???!?
-            }
-            
-        
+            // TODO: okay i could implement here the algo to restructure the nodes
         }
-        
-        
     }
 
+    if( newNode->level > graph->entrypoint->level){
+        graph->entrypoint = newNode;
+        graph->maxLayer = newNode->level;
+    }
 }
 
 /*Algorithm 3 SELECT-NEIGHBORS-SIMPLE(q, C, M) 
