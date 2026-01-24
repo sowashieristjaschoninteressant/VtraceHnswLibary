@@ -1,6 +1,6 @@
 #ifndef HNSW_GRAPH_H
 #define HNSW_GRAPH_H
-
+#include "vtraceCommon.h"
 #include "alloc.h"
 #include "heap.h"
 #include "vec.h"
@@ -52,7 +52,7 @@ extern void makeNode(node* node, vec v,uint32 id, uint32 nodeLevel, uint32 maxNe
 extern VT_graph *initializeGraph(uint32 maxLayer, uint32 efConstruction, uint32 efSearch, uint32 M_maxNeigbours, uint32 maxNodeCount);
 extern void uninitializeGraph(VT_graph* graph);
 extern void VTaddNeigbour(node* target, uint32 neighbourId, uint32 layer, uint32 M_MAXneigbours);
-
+extern void expandgraph(Graph* graph);
 
 HNSW_INLINE node* getNode(Graph* g, uint32 id){
   return &g->nodes[id];

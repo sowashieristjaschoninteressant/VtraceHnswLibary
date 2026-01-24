@@ -37,7 +37,10 @@ void makeNode(node* node, vec v,uint32 id, uint32 nodeLevel, uint32 maxNeigbours
 
     node->id = id;
     node->level = nodeLevel;
-    node->v = v;
+
+    node->v.dim = v.dim;
+    node->v.vec = hnsw_alloc_mem(sizeof(float32) * v.dim);
+    memcpy( node->v.vec, v.vec, sizeof(float32) * v.dim);
 
     if(nodeLevel <= 0 ) nodeLevel++;
 
@@ -55,6 +58,21 @@ void makeNode(node* node, vec v,uint32 id, uint32 nodeLevel, uint32 maxNeigbours
     node->numNeigbours = hnsw_alloc_mem(sizeof(uint32) * nodeLevel);
 
     memset(node->numNeigbours, 0, sizeof(uint32) * nodeLevel);
+
+}
+
+ void expandgraph(Graph* graph){
+    uint32 newMaxNodeCount = graph->maxNodeCount * 2;
+
+     hnswNode* nodes = realloc(graph->nodes, sizeof(hnswNode) * newMaxNodeCount);
+
+     if(!nodes){
+        HNSW_LOG("cannot allocate more nodes out of memory? expandGraph\n");
+        abort();
+     }
+
+     graph->nodes = nodes;
+     graph->maxNodeCount = newMaxNodeCount;
 
 }
 

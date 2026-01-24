@@ -10,6 +10,6 @@ vtrace:
 	$(CC) ./src/*.c $(FLAGS) -o ./bin/vtrace
 
 clean:
-	rm ./bin/*
+	rm -rf ./bin/*
 
 

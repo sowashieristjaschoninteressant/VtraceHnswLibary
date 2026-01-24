@@ -16,6 +16,7 @@ LIBARY INCLUDES
 #include "assert.h"
 #include "errno.h"
 #include "stdalign.h"
+#include "stdbool.h"
 /*
 =====================
 CUSTOM DEFINITIONS

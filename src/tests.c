@@ -396,6 +396,7 @@ void INSERT_TESTS()
 {
     test_insert_first_node();
     test_bidirectionalLinks();
+    test_max_neigbours_respected();
 }
 void test_insert_first_node()
 {
@@ -466,7 +467,41 @@ void test_bidirectionalLinks()
             }
         }
     }
-    
+
     uninitializeGraph(graph);
     HNSW_LOG("GRAPH CONNECTIONS ARE BIDIRECTIONAL!");
+}
+
+void test_max_neigbours_respected(){
+
+    Graph* g = make_simpleTestGraph();
+    // set maxNeigbors here gain for safety
+    g->M_maxNeigbours = 4;
+
+    uint32 dim = 4;
+    vec vecs[1000];
+
+    // seed the random algorithm to smth more deterministic
+    srand(42);
+    // arange
+    float32 ml = 2 / log(g->M_maxNeigbours);
+
+    for (uint32 j = 0; j < 1000; j++)
+    {
+        vecs[j].vec = generateRFA(dim, 0, 100000);
+        vecs[j].dim = dim;
+        printf("insertion round: %i\n", j); fflush(stdout);
+        INSERT(g, vecs[j], 10, 200, 200, ml);
+    }
+
+    for(uint32 i = 0; i < g->count; i++){
+        hnswNode* n = &g->nodes[i];
+
+        for(int lc = 0; lc < n->level; lc++){
+            HNSW_ASSERT(n->numNeigbours[lc] <= g->M_maxNeigbours);
+        }
+    }
+
+    HNSW_LOG("max neigbours respected succsess!! no realloc in this test");
+
 }
