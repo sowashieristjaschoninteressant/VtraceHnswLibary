@@ -98,12 +98,14 @@ void hnsw_free_mem(void* ptr){
     chainArena->arraySize = size;
     chainArena->chunkSize = chunkSize;
 
+    return chainArena;
+
  }
  void chainArena_destroy(hnsw_chainAllocator* chainAllocator){
     if(!chainAllocator || !chainAllocator->arenaPtr) return;
-    
+
     for(uint32 i = 0; i < chainAllocator->arraySize; i++){
-        free(chainAllocator->arenaPtr[i]);
+        arena_destroy(chainAllocator->arenaPtr[i]);
     }
 
     free(chainAllocator->arenaPtr);
@@ -145,7 +147,5 @@ void hnsw_free_mem(void* ptr){
     }
     chainAllocator->current = oldSize;
 
-
     return arena_alloc(chainAllocator->arenaPtr[chainAllocator->current], size, alignment);
-
  }

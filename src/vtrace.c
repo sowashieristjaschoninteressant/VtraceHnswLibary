@@ -51,7 +51,7 @@ Output: update hnsw inserting element q
  */
 void INSERT(Graph* graph,vec vec,uint32 M, uint32 Mmax, uint32 efConstruction, uint32 ml){
     hnswNode* ep,* newNode;
-    int32 nodeLevel = VTlevelSample(graph->maxLayer, ml);
+    int32 nodeLevel = VTlevelSample(MAX_LEVEL, ml);
     uint32 id = graph->count++;
 
     newNode = &graph->nodes[id];
@@ -68,6 +68,8 @@ void INSERT(Graph* graph,vec vec,uint32 M, uint32 Mmax, uint32 efConstruction, u
 
     if(!graph->entrypoint){
         graph->entrypoint = newNode;
+        graph->maxLayer = newNode->level;
+
         return;
     }
 

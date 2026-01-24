@@ -19,6 +19,9 @@
 #include "distance.h"
 #include "vec.h"
 #include "graph.h"
+#include "stdbool.h"
+
+#define MAX_LEVEL 16
 
 extern float VTsearch(Graph*, float vec);
 extern void VTinsert(Graph*, float vec);

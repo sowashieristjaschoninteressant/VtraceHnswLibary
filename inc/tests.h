@@ -18,10 +18,12 @@ extern void SELECT_NEAREST_NABOURS();
 extern void INIT_GRAPH_TEST();
 extern void GRAPH_TESTS();
 
-
-
 extern void ARENA_TESTS();
 extern void ARENA_ALLOCATEBIG_TEST();
 extern void ARENA_ALIGNMENT_TEST();
 extern void ARENA_ALLOCATEOVERFLOW_TEST();
+
+extern void INSERT_TESTS();
+extern void test_insert_first_node();
+extern void test_bidirectionalLinks();
 #endif

@@ -37,8 +37,10 @@ void makeNode(node* node, vec v,uint32 id, uint32 nodeLevel, uint32 maxNeigbours
 
     node->id = id;
     node->level = nodeLevel;
-    node->numNeigbours = 0;
     node->v = v;
+
+    if(nodeLevel <= 0 ) nodeLevel++;
+
     node->neigbours = hnsw_alloc_mem(sizeof(uint32*) * nodeLevel);
 
     for(uint32 i = 0; i < nodeLevel; i++){
@@ -50,7 +52,9 @@ void makeNode(node* node, vec v,uint32 id, uint32 nodeLevel, uint32 maxNeigbours
         }
     }
 
- 
+    node->numNeigbours = hnsw_alloc_mem(sizeof(uint32) * nodeLevel);
+
+    memset(node->numNeigbours, 0, sizeof(uint32) * nodeLevel);
 
 }
 

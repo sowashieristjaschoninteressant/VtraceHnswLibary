@@ -18,7 +18,7 @@ struct arena{
 typedef struct arena hnswArena;
 
 struct chainArena{
-    uint8** arenaPtr;
+    hnswArena** arenaPtr;
     int32 current;
     uint32 chunkSize;
     uint32 arraySize;
@@ -32,9 +32,9 @@ extern void arena_destroy(hnswArena* arena);
 extern void* arena_alloc( hnswArena* arena ,uint32 bytes, uint32 alignment);
 extern void arena_reset(hnswArena* arena);
  
-extern hnsw_chainAllocator* init_chainArena(uint32 size);
+extern hnsw_chainAllocator* init_chainArena(uint32 size, uint32 chunkSize);
 extern void chainArena_destroy(hnsw_chainAllocator* chainAllocator); 
-extern void* chainArenaAlloc( hnsw_chainAllocator* chainAllocator ,uint32 size);
+extern void* chainArenaAlloc( hnsw_chainAllocator* chainAllocator ,uint32 size, uint32 alignment);
 
 static inline uint32 align_up(uint32 value, uint32 alignment) {
     return (value + alignment - 1) & ~(alignment - 1);
