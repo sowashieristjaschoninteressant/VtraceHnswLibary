@@ -34,7 +34,8 @@ VT_graph *initializeGraph(uint32 maxLayer, uint32 efConstruction, uint32 efSearc
 }
 
 void makeNode(node* node, vec v,uint32 id, uint32 nodeLevel, uint32 maxNeigbours){
-
+    // because layer 1 will be saved in array slot 0 but when i pass 0 into the allocation func it will abort
+    uint32 allocationLevel = nodeLevel + 1;
     node->id = id;
     node->level = nodeLevel;
 
@@ -42,11 +43,11 @@ void makeNode(node* node, vec v,uint32 id, uint32 nodeLevel, uint32 maxNeigbours
     node->v.vec = hnsw_alloc_mem(sizeof(float32) * v.dim);
     memcpy( node->v.vec, v.vec, sizeof(float32) * v.dim);
 
-    if(nodeLevel <= 0 ) nodeLevel++;
+  
 
-    node->neigbours = hnsw_alloc_mem(sizeof(uint32*) * nodeLevel);
+    node->neigbours = hnsw_alloc_mem(sizeof(uint32*) * (allocationLevel));
 
-    for(uint32 i = 0; i < nodeLevel; i++){
+    for(uint32 i = 0; i < allocationLevel; i++){
         node->neigbours[i] = hnsw_alloc_mem(sizeof(uint32) * maxNeigbours);
         for(uint32 j = 0; j < maxNeigbours; j++){
             // this will never overflow unless run on a supercomputer :0 with like 10000gb of ram xd
@@ -55,9 +56,9 @@ void makeNode(node* node, vec v,uint32 id, uint32 nodeLevel, uint32 maxNeigbours
         }
     }
 
-    node->numNeigbours = hnsw_alloc_mem(sizeof(uint32) * nodeLevel);
+    node->numNeigbours = hnsw_alloc_mem(sizeof(uint32) * allocationLevel);
 
-    memset(node->numNeigbours, 0, sizeof(uint32) * nodeLevel);
+    memset(node->numNeigbours, 0, sizeof(uint32) * allocationLevel);
 
 }
 

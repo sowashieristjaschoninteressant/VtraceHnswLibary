@@ -32,11 +32,25 @@ Graph *make_simpleTestGraph()
     const uint32 maxLayer = 10;
     const uint32 maxNeigbors = 5;
     const uint32 ef = 10;
-    const uint32 maxNodeCount = 100;
+    const uint32 maxNodeCount = 1000;
     Graph *graph = initializeGraph(maxLayer, ef, ef, maxNeigbors, maxNodeCount);
     HNSW_ASSERT(graph);
 
     return graph;
+}
+
+void validate_graph(Graph* g) {
+    for (uint32 i = 0; i < g->count; i++) {
+        node* n = &g->nodes[i];
+        for (uint32 l = 0; l <= n->level; l++) {
+            HNSW_ASSERT(n->numNeigbours[l] <= g->M_maxNeigbours);
+            for (uint32 j = 0; j < n->numNeigbours[l]; j++) {
+                uint32 nb = n->neigbours[l][j];
+                HNSW_ASSERT(nb < g->count);
+                HNSW_ASSERT(nb != i);
+            }
+        }
+    }
 }
 
 // this graph will be just a simple one layer graph with fixed values in terms of M_MAXNEIGBOURS and MAXLAYER we just will have 4 nodes that will be connected with a max of 2 connections
@@ -445,7 +459,7 @@ void test_bidirectionalLinks()
     {
         hnswNode *node = &graph->nodes[i];
 
-        for (uint32 l = 0; l < node->level; l++)
+        for (uint32 l = 0; l <= node->level; l++)
         {
             for (uint32 k = 0; k < node->numNeigbours[l]; k++)
             {
@@ -453,7 +467,7 @@ void test_bidirectionalLinks()
                 hnswNode *other = &graph->nodes[nid];
 
                 bool found = false;
-                for (uint32 kk = 0; other->numNeigbours[l]; k++)
+                for (uint32 kk = 0; kk < other->numNeigbours[l]; kk++)
                 {
                     if (other->neigbours[l][kk] == i)
                     {
@@ -477,7 +491,6 @@ void test_max_neigbours_respected(){
     Graph* g = make_simpleTestGraph();
     // set maxNeigbors here gain for safety
     g->M_maxNeigbours = 4;
-
     uint32 dim = 4;
     vec vecs[1000];
 
@@ -491,7 +504,7 @@ void test_max_neigbours_respected(){
         vecs[j].vec = generateRFA(dim, 0, 100000);
         vecs[j].dim = dim;
         printf("insertion round: %i\n", j); fflush(stdout);
-        INSERT(g, vecs[j], 10, 200, 200, ml);
+        INSERT(g, vecs[j], 10, 10, 10, ml);
     }
 
     for(uint32 i = 0; i < g->count; i++){
@@ -502,6 +515,7 @@ void test_max_neigbours_respected(){
         }
     }
 
+    validate_graph(g);
     HNSW_LOG("max neigbours respected succsess!! no realloc in this test");
 
 }

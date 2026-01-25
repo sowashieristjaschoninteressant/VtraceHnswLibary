@@ -49,15 +49,20 @@ Output: update hnsw inserting element q
 19 set enter point for hnsw to q
  */
 void INSERT(Graph* graph,vec vec,uint32 M, uint32 Mmax, uint32 efConstruction, uint32 ml){
+    
     hnswNode* ep,* newNode;
     int32 nodeLevel = VTlevelSample(MAX_LEVEL, ml);
-    uint32 id = graph->count++;
-
+    uint32 id = graph->count;
+    
+    if(graph->maxNodeCount < id){
+       HNSW_LOG("graph is expanding!");
+	expandgraph(graph);
+    }
 
 
     newNode = &graph->nodes[id];
 
-    makeNode(newNode, vec,id, nodeLevel, Mmax);
+    makeNode(newNode, vec,id, nodeLevel, graph->M_maxNeigbours);
 
     #ifdef BILLION_SEARCH_HNSW
     // this is a hot loop so lets just write it like this. this will never happen basically unless you save over 4Billion nodes in this structure but i belive no consumer hardware has even the memory capacity for smth like that
@@ -66,14 +71,11 @@ void INSERT(Graph* graph,vec vec,uint32 M, uint32 Mmax, uint32 efConstruction, u
         abort();
     }
     #endif
-
-    if(graph->maxNodeCount < graph->count){
-       expandgraph(graph);
-    }
-
+    
     if(!graph->entrypoint){
         graph->entrypoint = newNode;
         graph->maxLayer = newNode->level;
+        graph->count++;
         return;
     }
 
@@ -91,14 +93,19 @@ void INSERT(Graph* graph,vec vec,uint32 M, uint32 Mmax, uint32 efConstruction, u
         for(uint32 j = 0; j < selected->size; j++){
 
             hnswNode* node = getNode(graph,selected->data[j].id);
-
+            
             if(graph->M_maxNeigbours > node->numNeigbours[layer] && graph->M_maxNeigbours > newNode->numNeigbours[layer]){
                 node->neigbours[layer][node->numNeigbours[layer]++] = newNode->id;
                 newNode->neigbours[layer][newNode->numNeigbours[layer]++] = node->id;
+                
+                HNSW_ASSERT(node->numNeigbours[layer] <= graph->M_maxNeigbours);
+                
             }
             // TODO: okay i could implement here the algo to restructure the nodes
         }
     }
+
+    graph->count++;
 
     if( newNode->level > graph->entrypoint->level){
         graph->entrypoint = newNode;
@@ -189,8 +196,12 @@ Heap *SEARCH_LAYER(Graph *graph, vec q,uint32 ef, uint32 lc)
 
         node *currentNode = &graph->nodes[current.id];
 
-        for (uint32 i = 0; i < currentNode->numNeigbours[lc]; i++)
-        {
+        if(lc > currentNode->level) continue;
+
+        uint32 nabourCount = currentNode->numNeigbours[lc];
+        HNSW_ASSERT(currentNode->level >= lc);
+        for (uint32 i = 0; i < nabourCount; i++)
+        {                    
             node *neigbour = &graph->nodes[currentNode->neigbours[lc][i]];
 
             if (graph->visited.visited[neigbour->id] != graph->visited.visited_mark)
