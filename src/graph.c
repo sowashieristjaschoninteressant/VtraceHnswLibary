@@ -81,10 +81,15 @@ visitedList initvList(uint32 size)
 {
     visitedList list;
 
-    list.visited_mark = 0;
-    list.size = size;
-    list.visited = calloc(0, sizeof(uint32) * size);
-    HNSW_ASSERT(list.visited);
+     list.size = size;
+   list.visited_mark = 0;
+    list.visited = hnsw_alloc_mem(sizeof(uint32) * size);
+    
+    if(!list.visited){
+        HNSW_LOG("error cannot allocate the visited List");
+        abort();
+    }
+
     return list;
 }
 

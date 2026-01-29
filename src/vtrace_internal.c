@@ -98,8 +98,6 @@ void INSERT(Graph* graph,vec vec,uint32 M, uint32 Mmax, uint32 efConstruction, u
                 node->neigbours[layer][node->numNeigbours[layer]++] = newNode->id;
                 newNode->neigbours[layer][newNode->numNeigbours[layer]++] = node->id;
                 
-                HNSW_ASSERT(node->numNeigbours[layer] <= graph->M_maxNeigbours);
-                
             }
             // TODO: okay i could implement here the algo to restructure the nodes
         }

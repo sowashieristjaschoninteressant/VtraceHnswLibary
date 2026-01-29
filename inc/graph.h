@@ -63,6 +63,11 @@ HNSW_INLINE void incVisitedMark(Graph* g){
     
 }
 HNSW_INLINE void markNodeVisited(Graph* g, uint64 id){
+      if(!g->visited.visited || id > g->visited.size){
+          printf("id index: %lu\n", id);
+          HNSW_LOG("visit list needs to grow");
+          abort();
+      }
       g->visited.visited[id] = g->visited.visited_mark;
 }
 #endif
