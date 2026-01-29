@@ -32,9 +32,11 @@ Graph *make_simpleTestGraph()
     const uint32 maxLayer = 10;
     const uint32 maxNeigbors = 5;
     const uint32 ef = 10;
-    const uint32 maxNodeCount = 1000;
+    const uint32 maxNodeCount = 1000000;
     Graph *graph = initializeGraph(maxLayer, ef, ef, maxNeigbors, maxNodeCount);
     HNSW_ASSERT(graph);
+    // lets reseed here for a more deterministic graph
+    srand(42);
 
     return graph;
 }
@@ -399,7 +401,7 @@ void GRAPH_TESTS()
 {
     HNSW_LOG("STARTING GRAPH TESTS");
     INIT_GRAPH_TEST();
-    //SIMPLE_SEARCH_LAYERTEST();
+    SIMPLE_SEARCH_LAYERTEST();
 
     SELECT_NEAREST_NABOURS();
     INSERT_TESTS();
@@ -411,6 +413,7 @@ void INSERT_TESTS()
     test_insert_first_node();
     test_bidirectionalLinks();
     test_max_neigbours_respected();
+     test_expandGraph();
 }
 void test_insert_first_node()
 {
@@ -429,6 +432,8 @@ void test_insert_first_node()
     HNSW_ASSERT(graph->entrypoint == &graph->nodes[0]);
     HNSW_ASSERT(graph->maxLayer == graph->nodes[0].level);
 
+    validate_graph(graph);
+
     HNSW_LOG("insert first node works!");
     uninitializeGraph(graph);
 }
@@ -437,7 +442,7 @@ void test_bidirectionalLinks()
 {
     Graph *graph = make_simpleTestGraph();
     uint32 dim = 4;
-    vec vecs[5];
+    vec vecs[50];
 
     // seed the random algorithm to smth more deterministic
 
@@ -445,7 +450,7 @@ void test_bidirectionalLinks()
     // arange
     float32 ml = 1 / log(graph->M_maxNeigbours);
 
-    for (uint32 j = 0; j < 5; j++)
+    for (uint32 j = 0; j < 50; j++)
     {
         vecs[j].vec = generateRFA(dim, 0, 100000);
         vecs[j].dim = dim;
@@ -487,23 +492,23 @@ void test_bidirectionalLinks()
 }
 
 void test_max_neigbours_respected(){
-
     Graph* g = make_simpleTestGraph();
     // set maxNeigbors here gain for safety
     g->M_maxNeigbours = 4;
+    
+
     uint32 dim = 4;
-    vec vecs[1000];
+    vec* vecs = malloc(sizeof(vec) * 1000000);
+    HNSW_ASSERT(vecs);
 
-    // seed the random algorithm to smth more deterministic
-    srand(42);
     // arange
-    float32 ml = 2 / log(g->M_maxNeigbours);
+    float32 ml = 1 / log(g->M_maxNeigbours);
 
-    for (uint32 j = 0; j < 1000; j++)
+    for (uint32 j = 0; j < 1000000; j++)
     {
-        vecs[j].vec = generateRFA(dim, 0, 100000);
+        vecs[j].vec = generateRFA(dim, 0, 1000000);
         vecs[j].dim = dim;
-        printf("insertion round: %i\n", j); fflush(stdout);
+       // printf("insertion round: %i\n", j); fflush(stdout);
         INSERT(g, vecs[j], 10, 10, 10, ml);
     }
 
@@ -516,6 +521,34 @@ void test_max_neigbours_respected(){
     }
 
     validate_graph(g);
+    uninitializeGraph(g);
     HNSW_LOG("max neigbours respected succsess!! no realloc in this test");
+}
+
+void test_expandGraph(){
+    //declare
+    HNSW_LOG("STARTING expandGraph TEST");
+    Graph* g = make_simpleTestGraph();
+    g->M_maxNeigbours = 10;
+    
+
+    const int32 vCount = 500;
+    const uint32 dim = 5;
+    const float32 ml =  2 / log(g->M_maxNeigbours);
+
+    vec v[vCount];
+    
+    // arrange
+
+    for(int i = 0; i < vCount; i++){
+        v[i].vec = generateRFA(dim,0,1000000);
+        v[i].dim = dim;
+        INSERT(g,v[i],10,10,10,ml);
+    }
+
+    HNSW_ASSERT(g->maxNodeCount == g->maxNodeCount * 2 );
+    validate_graph(g);
+
+    HNSW_LOG("EXPANDING GRAPH OVER SET MAX NODES POSSIBLE!");
 
 }

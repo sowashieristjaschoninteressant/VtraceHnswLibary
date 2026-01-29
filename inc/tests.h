@@ -26,5 +26,6 @@ extern void INSERT_TESTS();
 extern void test_insert_first_node();
 extern void test_bidirectionalLinks();
 extern void test_max_neigbours_respected();
+extern void test_expandGraph();
 
 #endif
