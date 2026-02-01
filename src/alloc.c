@@ -32,16 +32,14 @@ void hnsw_free_mem(void* ptr){
          abort();
     }
 
-    arena->base = malloc(sizeof(uint8) *  size);
+    arena->base = malloc(sizeof(uint8) * size);
    
     if(!arena->base){
         HNSW_LOG("cannot allocate space for arena Base Pointer");
         abort();
     }
-
     arena->offset = 0;
     arena->size = size;
-
    
 
     return arena;
@@ -76,7 +74,7 @@ void hnsw_free_mem(void* ptr){
 
 
  hnsw_chainAllocator* init_chainArena(uint32 size, uint32 chunkSize){
-    hnsw_chainAllocator* chainArena = malloc(sizeof(chainArena));
+    hnsw_chainAllocator* chainArena = malloc(sizeof(hnsw_chainAllocator));
 
     if(!chainArena){
         HNSW_LOG("cannot allocate chainAllocator out of memory");
@@ -97,6 +95,7 @@ void hnsw_free_mem(void* ptr){
 
     chainArena->arraySize = size;
     chainArena->chunkSize = chunkSize;
+    chainArena->current  = 0;
 
     return chainArena;
 
@@ -109,7 +108,9 @@ void hnsw_free_mem(void* ptr){
     }
 
     free(chainAllocator->arenaPtr);
+    free(chainAllocator);
  }
+
  void* chainArenaAlloc( hnsw_chainAllocator* chainAllocator ,uint32 size, uint32 alignment){
     
     void* ptr = arena_alloc( chainAllocator->arenaPtr[chainAllocator->current], size, alignment);

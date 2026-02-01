@@ -39,10 +39,11 @@ visitedList initvList(uint32 size);
   uint64 count;
   uint64 maxNodeCount;
 
+  int64 entrypointID;
   visitedList visited;
   node* nodes;
   Heap* maxHeap,* minHeap;
-  node* entrypoint;
+  
 };
 
 typedef struct Graph Graph;
@@ -54,7 +55,7 @@ extern void uninitializeGraph(VT_graph* graph);
 extern void VTaddNeigbour(node* target, uint32 neighbourId, uint32 layer, uint32 M_MAXneigbours);
 extern void expandgraph(Graph* graph);
 
-HNSW_INLINE node* getNode(Graph* g, uint32 id){
+HNSW_INLINE node* getNodeById(Graph* g, uint32 id){
   return &g->nodes[id];
 }
 

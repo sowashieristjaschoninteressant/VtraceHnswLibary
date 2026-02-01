@@ -21,6 +21,9 @@ extern void ARENA_TESTS();
 extern void ARENA_ALLOCATEBIG_TEST();
 extern void ARENA_ALIGNMENT_TEST();
 extern void ARENA_ALLOCATEOVERFLOW_TEST();
+extern void CHAINARENA_READWRITEALLOCATION_TEST();
+extern void CHAINARENA_USENEXT_TEST();
+extern void CHAINARENA_GROW_TEST();
 
 extern void INSERT_TESTS();
 extern void test_insert_first_node();

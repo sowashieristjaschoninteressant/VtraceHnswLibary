@@ -25,7 +25,7 @@ VT_graph *initializeGraph(uint32 maxLayer, uint32 efConstruction, uint32 efSearc
     graph->nodes = hnsw_alloc_mem(sizeof(hnswNode) * graph->maxNodeCount);
     graph->count = 0;    
 
-    graph->entrypoint = NULL;
+    graph->entrypointID = -1;
     graph->visited = initvList(START_LAYER_NODES);
     graph->maxHeap = heap_init(graph->efconstruction, max_cmp);
     graph->minHeap = heap_init(graph->efconstruction, min_cmp);
