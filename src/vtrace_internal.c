@@ -164,8 +164,8 @@ Output: ef closest neighbors to q
 // node* SEARCH_LAYER(vec v, node* ep, uint32 ef, uint32 lc)
 Heap *SEARCH_LAYER(Graph *graph,hnswNode* entryPoint, vec q,uint32 ef, uint32 lc)
 {
-    Heap *c = heap_init(ef, min_cmp); // candidate list
-    Heap *w = heap_init(ef, max_cmp); // closest results
+    Heap *c = MIN_HEAP(ef); // candidate list
+    Heap *w = MAX_HEAP(ef); // closest results
     
 
     incVisitedMark(graph);
@@ -175,7 +175,7 @@ Heap *SEARCH_LAYER(Graph *graph,hnswNode* entryPoint, vec q,uint32 ef, uint32 lc
         memset(graph->visited.visited, 0, sizeof(uint32) * graph->visited.size);
     }
 
-    markNodeVisited(graph, getNodeById(graph,graph->entrypointID)->id);
+    markNodeVisited(graph, getNodeById(graph,entryPoint->id)->id);
 
     float32 epDistance = l2_sq_distance( &entryPoint->v, &q);
 
@@ -185,9 +185,9 @@ Heap *SEARCH_LAYER(Graph *graph,hnswNode* entryPoint, vec q,uint32 ef, uint32 lc
     while (c->size > 0)
     {
         heapItem current = heapPop(c);
-        heapItem furthestElementQ = heapPeek(w);
+        
 
-        if (w->size >= ef && current.dist > furthestElementQ.dist)
+        if (w->size >= ef && current.dist > heapPeek(w).dist)
         {
             HNSW_LOG("all elements are evaluated in searchLayer");
             
@@ -213,7 +213,7 @@ Heap *SEARCH_LAYER(Graph *graph,hnswNode* entryPoint, vec q,uint32 ef, uint32 lc
                 
                 float32 dist = l2_sq_distance( &graph->nodes[neigbour->id].v, &q);
 
-                if (dist < furthestElementQ.dist || w->size < ef)
+                if (dist < heapPeek(w).dist || w->size < ef)
                 {
                     heap_insert(c, neigbour->id, dist, NULL);
                     heap_insert(w, neigbour->id, dist, NULL);
@@ -268,26 +268,26 @@ extend connections
 keepPrunnedConnections
 18 return R*/
 
-#define EXTENDCANDIDATES(flags) (flags & 0x1) & (1 << 0)
-#define KEEP_P_CONN(flags) (flags & (0x1 << 1)) & (1 << 1)
 
-Heap* SELECT_NEIGBOURS_HEURISTIC(Graph* graph,hnswNode* baseElement,Heap* candidateElements,int32 lc,int32 M,int8 FLAGS ){
+Heap* SELECT_NEIGBOURS_HEURISTIC(Graph* graph,hnswNode* baseElement,Heap* workingQueue,int32 lc,int32 M,int8 FLAGS ){
     Heap* resultHeap = MAX_HEAP(M);
-    Heap* workingQueue = candidateElements;
-    Heap* discarded = MAXHEAP(M);
+    Heap* discarded = MIN_HEAP(M);
 
     // switch worst with better
     // extendCandidates
-    if(EXTENDCANDIDATES(FLAGS)){
-        for(int32 i = 0; i <  workingQueue->size; i++){
+    if(HAS_FLAG(FLAGS,EXTENDCANDIDATES)){
+        
+
+        for( int32 i = 0; i < workingQueue->size; i++){
             hnswNode* node = getNodeById(graph, workingQueue->data[i].id);
 
             for(int32 j = 0; j < node->numNeigbours[lc]; j++){
-               hnswNode* nabour =  getNodebyId(graph, node->neigbours[lc][j]);
+               hnswNode* nabour =  getNodeById(graph, node->neigbours[lc][j]);
+
                float32 dist = l2_sq_distance(&baseElement->v, &nabour->v);
                if(dist < heapPeek(workingQueue).dist && graph->visited.visited[nabour->id] != graph->visited.visited_mark){
                     markNodeVisited(graph, nabour->id); 
-                    heapPop(workingQueue);
+                    
                     heap_insert(workingQueue, nabour->id, dist, NULL);
                }
             }
@@ -296,22 +296,75 @@ Heap* SELECT_NEIGBOURS_HEURISTIC(Graph* graph,hnswNode* baseElement,Heap* candid
         
     }
 
-    while(workingQueue->size > 0 && resultHeap->size < M){
-        heapItem e = heapPop(workingQueue);
+    maxToMinHeap(workingQueue);
+    // core algo 
 
-        if( resultHeap->size <= 0 ||  e.dist < heapPeek(resultHeap).dist ){
-            heap_insert(resultHeap,e.id,e.dist, NULL);
-           
-        }else{
-            heap_insert(discarded,e.id,e.dist, NULL);
+    while(workingQueue->size > 0){
+        if(resultHeap->size == M) break;
 
+        bool ok = true;
+        heapItem currHeapI = heapPop(workingQueue);
+        hnswNode* current = getNodeById(graph,currHeapI.id);
+
+        float32 distToBase = l2_sq_distance(&current->v, &baseElement->v);
+
+        for(int32 j = 0; j < resultHeap->size; j++){
+
+            hnswNode* r = getNodeById(graph, resultHeap->data[j].id);
+
+            if(l2_sq_distance(&current->v, &r->v) <= distToBase){
+                ok = false;
+                break; // to close to someone reject
+            }
         }
 
+        if(ok){
+            heap_insert(resultHeap, current->id, currHeapI.dist, NULL);
+        }else{
+            heap_insert(discarded, current->id, currHeapI.dist, NULL);
+        }
     }
 
     // keep Pruned connections
-    if(KEEP_P_CONN(FLAGS)){
-
+    if(HAS_FLAG(FLAGS,KEEP_P_CONN)){
+        while(discarded->size > 0 && resultHeap->size < M){
+            heapItem node =  heapPop(discarded);
+            heap_insert(resultHeap,node.id,node.dist, NULL);
+        }
     }
     return resultHeap;
+}
+
+
+/*
+Algorithm 5
+K-NN-SEARCH(hnsw, q, K, ef)
+Input: multilayer graph hnsw, query element q, number of nearest
+neighbors to return K, size of the dynamic candidate list ef
+Output: K nearest elements to q
+1 W ← ∅ // set for the current nearest elements
+2 ep ← get enter point for hnsw
+3 L ← level of ep // top layer for hnsw
+4 for lc ← L … 1
+5 W ← SEARCH-LAYER(q, ep, ef=1, lc)
+6 ep ← get nearest element from W to q
+7 W ← SEARCH-LAYER(q, ep, ef, lc =0)
+8 return K nearest elements from W to q
+*/
+
+Heap* K_NN_SEARCH(Graph* g, vec q,int32 K,int32 efsearch){
+
+    Heap* W = MAX_HEAP(K);
+    hnswNode* entryPoint = getNodeById(g,g->entrypointID);
+    int32 L = entryPoint->level;
+
+    for(int32 i = entryPoint->level - 1; i >= 0; i--){
+        SEARCH_LAYER(g,entryPoint,q,efsearch,i);
+       
+
+        entryPoint = getNodeById( g, heapPeek(W).id);
+    }
+
+
+    return SEARCH_LAYER(g,entryPoint,q,efsearch,0);
 }

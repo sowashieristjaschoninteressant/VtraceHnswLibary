@@ -574,7 +574,7 @@ void test_bidirectionalLinks()
 
 void test_max_neigbours_respected()
 {
-    const uint32 vecsize = 200;
+    const uint32 vecsize = 1000000;
 
     Graph *g = make_simpleTestGraph(vecsize);
     uint32 dim = 150;
@@ -589,7 +589,7 @@ void test_max_neigbours_respected()
     {
         vecs[j].vec = generateRandVec(dim, 0, 1000000);
         vecs[j].dim = dim;
-        // printf("insertion round: %i\n", j); fflush(stdout);
+         printf("insertion round: %i\n", j); fflush(stdout);
         INSERT(g, vecs[j], 10, 10, 50, ml);
     }
 

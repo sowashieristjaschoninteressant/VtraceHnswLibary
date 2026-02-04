@@ -41,6 +41,9 @@ extern heapItem heapPop(Heap* heap);
 extern heapItem heapPeek(Heap* heap);
 extern void heap_reset(Heap* heap);
 extern void debugPrintHeap(Heap* heap);
+extern void heapify(Heap* heap);
+extern void minToMaxHeap(Heap* heap);
+extern void maxToMinHeap(Heap* heap);
 
 #define MAX_HEAP(capacity) heap_init((uint32) capacity, max_cmp);
 #define MIN_HEAP(capacity) heap_init((uint32) capacity, min_cmp);

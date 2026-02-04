@@ -71,6 +71,17 @@ Heap* heap_init(uint32 capacity, cmp cmpFunc){
     return heap;
 }
 
+void minToMaxHeap(Heap* heap){
+    heap->compareFunc = &max_cmp;
+    heapify(heap);
+    
+}
+
+void maxToMinHeap(Heap* heap){
+    heap->compareFunc = &min_cmp;
+    heapify(heap);
+}
+
 void heap_dispose(Heap* heap){
    
     free(heap->data);
@@ -116,8 +127,6 @@ heapItem heapPeek(Heap* heap){
     return heap->data[0];
 }
 
-
-
 void heap_reset(Heap* heap){
 
     heap->size = 0;
@@ -131,3 +140,8 @@ void debugPrintHeap(Heap* heap){
     }
 }
 
+void heapify(Heap* heap) {
+    for (int32 i = heap->size / 2 - 1; i >= 0; i--) {
+        siftDown(heap, i);
+    }
+}
