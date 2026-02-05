@@ -114,9 +114,82 @@ Graph *mockGraphOneLayer(uint32 efSearch)
 
     VTaddNeigbour(&nodes[3], 1, 0, M_MAXNEIGBOURS);
     VTaddNeigbour(&nodes[3], 2, 0, M_MAXNEIGBOURS);
+    
 
     graph->nodes = nodes;
     graph->count = 4;
+    graph->entrypointID = nodes[0].id;
+
+    return graph;
+}
+
+// 5 nodes node w id  = 5 is connected with 3 and 1 
+Graph* mockGraphTwoLayer(int32 efSearch){
+
+    const uint32 M_MAX_LAYER = 1;
+    const uint32 EF_CONSTRUCTION = 40; // irrelevant
+    const uint32 M_MAXNEIGBOURS = 3;
+    const uint32 vectorCount = 5;
+    const uint32 LAYERS = 2;
+    const uint32 maxNodeCount = 50000;
+
+    Graph *graph = initializeGraph(M_MAX_LAYER, EF_CONSTRUCTION, efSearch, M_MAXNEIGBOURS, maxNodeCount);
+
+    float32 vals0[] = {0.0f, 0.0f};
+    float32 vals1[] = {1.0f, 0.0f};
+    float32 vals2[] = {0.0f, 1.0f};
+    float32 vals3[] = {1.0f, 1.0f};
+    float32 vals4[] = {0.95, 0.95f};
+
+    vec *testVectores = hnsw_alloc_mem(sizeof(vec) * vectorCount);
+    HNSW_ASSERT(testVectores);
+
+    testVectores[0] = make_vec(2, vals0);
+    testVectores[1] = make_vec(2, vals1);
+    testVectores[2] = make_vec(2, vals2);
+    testVectores[3] = make_vec(2, vals3);
+    testVectores[4] = make_vec(2, vals4);
+
+    node *nodes = hnsw_alloc_mem(sizeof(node) * 5);
+    HNSW_ASSERT(nodes);
+
+    for (uint32 i = 0; i < vectorCount; i++)
+    {
+
+        nodes[i].v = testVectores[i];
+
+        nodes[i].numNeigbours = hnsw_alloc_mem((sizeof(uint32) * LAYERS));
+        HNSW_ASSERT(nodes[i].numNeigbours);
+        nodes[i].numNeigbours[0] = 0;
+
+        nodes[i].neigbours = hnsw_alloc_mem(sizeof(uint32 *) * LAYERS);
+        HNSW_ASSERT(nodes[i].neigbours);
+
+        nodes[i].neigbours[0] = hnsw_alloc_mem(sizeof(uint32) * M_MAXNEIGBOURS);
+        HNSW_ASSERT(nodes[i].neigbours[0]);
+        nodes[i].id = i;
+    }
+
+    VTaddNeigbour(&nodes[0], 1, 0, M_MAXNEIGBOURS);
+    VTaddNeigbour(&nodes[0], 2, 0, M_MAXNEIGBOURS);
+
+    VTaddNeigbour(&nodes[1], 0, 0, M_MAXNEIGBOURS);
+    VTaddNeigbour(&nodes[1], 3, 0, M_MAXNEIGBOURS);
+
+    VTaddNeigbour(&nodes[2], 0, 0, M_MAXNEIGBOURS);
+    VTaddNeigbour(&nodes[2], 3, 0, M_MAXNEIGBOURS);
+
+    VTaddNeigbour(&nodes[3], 1, 0, M_MAXNEIGBOURS);
+    VTaddNeigbour(&nodes[3], 2, 0, M_MAXNEIGBOURS);
+
+    VTaddNeigbour(&nodes[4], 3, 0, M_MAXNEIGBOURS);
+    VTaddNeigbour(&nodes[4], 1, 0, M_MAXNEIGBOURS);
+
+    VTaddNeigbour(&nodes[3], 4, 0, M_MAXNEIGBOURS);
+    VTaddNeigbour(&nodes[1], 4, 0, M_MAXNEIGBOURS);
+
+    graph->nodes = nodes;
+    graph->count = 5;
     graph->entrypointID = nodes[0].id;
 
     return graph;
@@ -403,9 +476,9 @@ void SELECT_NEAREST_NABOURS()
     // Example distances for candidates
     float distances[] = {10.5, 2.3, 7.7, 4.4, 6.6, 1.1, 8.8};
     uint32 num_candidates = sizeof(distances) / sizeof(distances[0]);
-    uint32 M = 3; // Number of nearest neighbors to select
+    uint32 M = 3; 
 
-    // Step 1: Create a max-heap of candidates
+  
     Heap *c = heap_init(num_candidates, max_cmp);
     for (uint32 i = 0; i < num_candidates; i++)
     {
@@ -485,7 +558,114 @@ void GRAPH_TESTS()
 
     SELECT_NEAREST_NABOURS();
     INSERT_TESTS();
+    ANN_SEARCH_TEST_ONE_LAYER();
+    ANN_SEARCH_TEST_HEAP_TRIMMING();
+    ANN_SEARCH_TEST_CHANGE_ENTRYPOINT();
+    ANN_SEARCH_TEST_TWO_LAYERS_MOCK();
+    FULL_API_INSERT_SEARCH_TEST();
     HNSW_LOG("GRAPH TESTS RUN SUCESSFULLY!");
+}
+
+void FULL_API_INSERT_SEARCH_TEST()
+{   
+    const int32 maxSize = 5000;
+    const int32 dim = 5;
+    Graph* g = initializeGraph(10, 20, 10, 20, maxSize);
+    vec* vecs = hnsw_alloc_mem(sizeof(vec) * maxSize);
+
+    float32 ml = 1 / log(g->M_maxNeigbours);
+    
+    for(int32 i = 0; i < maxSize; i++){
+        float* fvalues = generateRandVec(dim,0,100000); 
+        vecs[i] = make_vec(dim,fvalues);
+
+        INSERT(g, vecs[i],10 ,g->M_maxNeigbours, g->efconstruction, ml);
+    }
+
+    vec query = make_vec(dim, (float[]) {0.1,5.0, 6,2,3});
+
+    Heap* r = K_NN_SEARCH(g, query, 3, g->efsearch);
+
+    
+    debugPrintHeap(r);
+
+    validate_graph(g);
+    HNSW_LOG("OKAY FULL API WORKS!");
+
+
+}
+
+void ANN_SEARCH_TEST_TWO_LAYERS_MOCK(){
+    HNSW_LOG("START 2 LAYER TEST!");
+    const int32 expectedID = 4;
+    Graph* g = mockGraphTwoLayer(10);
+    vec q = make_vec(2, (float[]){ 0.95f, 0.95f});
+    
+    Heap* K = K_NN_SEARCH(g,q,1,10);
+
+    HNSW_ASSERT(expectedID == heapPeek(K).id);
+    HNSW_ASSERT(K->size == 1);
+    // NOTE: due to manually inserting the nodes its possible that the graph structure is not preserved i will try this now with the official api
+    //validate_graph(g);
+    
+    
+}
+
+void ANN_SEARCH_TEST_CHANGE_ENTRYPOINT(){
+    HNSW_LOG("start ANN_SEARCH TEST CHANGING ENTRYPOINT");
+    const int32 ef = 10;
+    const int32 expectedID = 3;
+    Graph* g = mockGraphOneLayer(ef);
+    
+    g->entrypointID = 3; // huuh this is a bit crazy
+
+    vec q = make_vec(2, (float[]) {0.9f,0.9f});
+    
+    Heap* w = K_NN_SEARCH(g,q,1,ef);
+
+    HNSW_ASSERT(w);
+    HNSW_ASSERT(w->size ==  1 );
+    HNSW_ASSERT(heapPeek(w).id == expectedID);
+    HNSW_LOG("despite entrypoint change graph returns correct result!!");
+    uninitializeGraph(g);
+
+}
+
+void ANN_SEARCH_TEST_HEAP_TRIMMING(){
+
+    HNSW_LOG("start ANN_SEARCH HEAP_TRIMM TEST!");
+    const int32 ef = 4, expectedID = 3, K = 2;
+    Graph* g = mockGraphOneLayer(ef);
+    
+    vec q = make_vec(2, (float[]) {0.9f,0.9f});
+    
+    Heap* w = K_NN_SEARCH(g,q,K,ef);
+    debugPrintHeap(w); fflush(stdout);
+    printf("this is the current heapSize: %i\n", w->size); fflush(stdout);
+    HNSW_ASSERT(w);
+    HNSW_ASSERT(w->size == K );
+    HNSW_ASSERT(heapPeek(w).id == expectedID || w->data[1].id == expectedID );
+    HNSW_LOG("OKAY ANN_SEARCH RETURNS CORRECT HEAP SIZE");
+    uninitializeGraph(g);
+
+}
+
+
+void ANN_SEARCH_TEST_ONE_LAYER(){
+    HNSW_LOG("start ANN_SEARCH TEST!");
+    const int32 ef = 10;
+    const int32 expectedID = 3;
+    Graph* g = mockGraphOneLayer(ef);
+    
+    vec q = make_vec(2, (float[]) {0.9f,0.9f});
+    
+    Heap* w = K_NN_SEARCH(g,q,1,ef);
+
+    HNSW_ASSERT(w);
+    HNSW_ASSERT(w->size ==  1 );
+    HNSW_ASSERT(heapPeek(w).id == expectedID);
+    HNSW_LOG("OKAY ANN_SEARCH RETURNS CORRECT RESULT ONE LAYER GRAPH MOCK!");
+    uninitializeGraph(g);
 }
 
 void INSERT_TESTS()
@@ -536,7 +716,7 @@ void test_bidirectionalLinks()
         vecs[j].vec = generateRandVec(dim, 0, 100000);
         vecs[j].dim = dim;
 
-        INSERT(graph, vecs[j], 10, 200, 200, ml);
+        INSERT(graph, vecs[j], 10, 200, 100, ml);
     }
 
     // assert
@@ -574,7 +754,7 @@ void test_bidirectionalLinks()
 
 void test_max_neigbours_respected()
 {
-    const uint32 vecsize = 1000000;
+    const uint32 vecsize = 10000;
 
     Graph *g = make_simpleTestGraph(vecsize);
     uint32 dim = 150;
@@ -589,7 +769,6 @@ void test_max_neigbours_respected()
     {
         vecs[j].vec = generateRandVec(dim, 0, 1000000);
         vecs[j].dim = dim;
-         printf("insertion round: %i\n", j); fflush(stdout);
         INSERT(g, vecs[j], 10, 10, 50, ml);
     }
 

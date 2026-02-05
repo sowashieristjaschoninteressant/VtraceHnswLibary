@@ -7,7 +7,7 @@ struct heapItem {
 
     void* data;
     uint32 id;
-    float32 dist; // key
+    long double dist; // key
 };
 typedef struct heapItem heapItem;
 

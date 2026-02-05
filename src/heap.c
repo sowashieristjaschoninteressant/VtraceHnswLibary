@@ -90,8 +90,12 @@ void heap_dispose(Heap* heap){
 
 void heap_insert(Heap* heap, uint32 id, float32 dist, void* data){
    if(heap->size >= heap->capacity){
-        printf("[-] heap has already reached maximum size\n");
-        exit(EXIT_FAILURE);
+        // increase capacity
+        int32 oldCap = heap->capacity;        
+        heap->capacity = oldCap * 2;
+
+        heap->data = realloc(heap->data, sizeof(heapItem) *  heap->capacity);
+        HNSW_ASSERT(heap->data);
     }
 
    uint32 i = heap->size++;

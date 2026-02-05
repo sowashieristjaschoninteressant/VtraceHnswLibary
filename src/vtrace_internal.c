@@ -89,7 +89,7 @@ void INSERT(Graph* graph,vec vec,uint32 M, uint32 Mmax, uint32 efConstruction, u
     for(int32 layer = MIN(ep->level, nodeLevel); layer >= 0; layer--){
         Heap* resultHeap = SEARCH_LAYER(graph,ep, vec, efConstruction, layer );
         
-        Heap* selected = SELECT_NEIGBOURS_SIMPLE(resultHeap, M); // alg 3 for now might change that
+        Heap* selected = SELECT_NEIGBOURS_HEURISTIC(graph,newNode,resultHeap,layer,M,0); //SELECT_NEIGBOURS_SIMPLE(resultHeap, M); // alg 3 for now might change that
 
         for(uint32 j = 0; j < selected->size; j++){
 
@@ -119,18 +119,20 @@ Input: base element q,
 Heap *SELECT_NEIGBOURS_SIMPLE(Heap *c, uint32 M)
 {
     Heap *m = MAX_HEAP(M);
+
+   
+    
+    maxToMinHeap(c);
+
     while (c->size > 0)
     {
+        if(m->size >= M){
+            break;
+        }
         heapItem current = heapPop(c);
-        if (m->size < M)
-        {
-            heap_insert(m, current.id, current.dist, NULL);
-        }
-        else if (current.dist < heapPeek(m).dist)
-        {
-            heapPop(m);
-            heap_insert(m, current.id, current.dist, NULL);
-        }
+
+        heap_insert(m, current.id, current.dist, NULL );
+
     }
     return m;
 }
@@ -175,9 +177,9 @@ Heap *SEARCH_LAYER(Graph *graph,hnswNode* entryPoint, vec q,uint32 ef, uint32 lc
         memset(graph->visited.visited, 0, sizeof(uint32) * graph->visited.size);
     }
 
-    markNodeVisited(graph, getNodeById(graph,entryPoint->id)->id);
+    markNodeVisited(graph, entryPoint->id);
 
-    float32 epDistance = l2_sq_distance( &entryPoint->v, &q);
+    long double epDistance = l2_sq_distance( &entryPoint->v, &q);
 
     heap_insert(c, entryPoint->id, epDistance, NULL);
     heap_insert(w, entryPoint->id, epDistance, NULL);
@@ -189,7 +191,7 @@ Heap *SEARCH_LAYER(Graph *graph,hnswNode* entryPoint, vec q,uint32 ef, uint32 lc
 
         if (w->size >= ef && current.dist > heapPeek(w).dist)
         {
-            HNSW_LOG("all elements are evaluated in searchLayer");
+          //  HNSW_LOG("all elements are evaluated in searchLayer");
             
             break;
         }
@@ -199,7 +201,7 @@ Heap *SEARCH_LAYER(Graph *graph,hnswNode* entryPoint, vec q,uint32 ef, uint32 lc
         if(lc > currentNode->level) continue;
 
         uint32 nabourCount = currentNode->numNeigbours[lc];
-        HNSW_ASSERT(currentNode->level >= lc);
+        
         for (uint32 i = 0; i < nabourCount; i++)
         {                    
             node *neigbour = getNodeById(graph,currentNode->neigbours[lc][i]);
@@ -211,9 +213,9 @@ Heap *SEARCH_LAYER(Graph *graph,hnswNode* entryPoint, vec q,uint32 ef, uint32 lc
 
 
                 
-                float32 dist = l2_sq_distance( &graph->nodes[neigbour->id].v, &q);
+                long double dist = l2_sq_distance( &graph->nodes[neigbour->id].v, &q);
 
-                if (dist < heapPeek(w).dist || w->size < ef)
+                if (dist + EPSILON <  heapPeek(w).dist || w->size < ef)
                 {
                     heap_insert(c, neigbour->id, dist, NULL);
                     heap_insert(w, neigbour->id, dist, NULL);
@@ -312,7 +314,7 @@ Heap* SELECT_NEIGBOURS_HEURISTIC(Graph* graph,hnswNode* baseElement,Heap* workin
 
             hnswNode* r = getNodeById(graph, resultHeap->data[j].id);
 
-            if(l2_sq_distance(&current->v, &r->v) <= distToBase){
+            if(l2_sq_distance(&current->v, &r->v)  <= distToBase){
                 ok = false;
                 break; // to close to someone reject
             }
@@ -354,17 +356,22 @@ Output: K nearest elements to q
 
 Heap* K_NN_SEARCH(Graph* g, vec q,int32 K,int32 efsearch){
 
-    Heap* W = MAX_HEAP(K);
+    Heap* W;
     hnswNode* entryPoint = getNodeById(g,g->entrypointID);
-    int32 L = entryPoint->level;
 
-    for(int32 i = entryPoint->level - 1; i >= 0; i--){
-        SEARCH_LAYER(g,entryPoint,q,efsearch,i);
+    for(int32 i = g->maxLayer - 1; i >= 0; i--){
+        W = SEARCH_LAYER(g,entryPoint,q,1,i);
        
-
         entryPoint = getNodeById( g, heapPeek(W).id);
     }
 
+    W = SEARCH_LAYER(g,entryPoint,q,efsearch,0);
+    printf("okay this is the heap returned by search-Layern\n");
+    debugPrintHeap(W);
+    fflush(stdout);
+    W = SELECT_NEIGBOURS_SIMPLE(W,K);
 
-    return SEARCH_LAYER(g,entryPoint,q,efsearch,0);
+    // explicitly trim bc i get bugs when i use optimizations
+    
+    return W ;
 }

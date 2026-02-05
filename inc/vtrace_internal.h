@@ -10,6 +10,9 @@
 
 #define MAX_LEVEL 16
 
+#define EPSILON 1e-6f
+
+
 enum SELECT_NEIG_HEURISTIC_FLAGS {
     EXTENDCANDIDATES = 0,
     KEEP_P_CONN
