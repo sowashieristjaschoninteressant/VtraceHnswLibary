@@ -48,7 +48,7 @@ Output: update hnsw inserting element q
 18 if l > L
 19 set enter point for hnsw to q
  */
-void INSERT(Graph* graph,vec vec,uint32 M, uint32 Mmax, uint32 efConstruction, uint32 ml){
+void INSERT(Graph* graph,vec vec,int32 M, uint32 Mmax, uint32 efConstruction, uint32 ml){
     
     hnswNode* originalEP,* ep,* newNode;
     int32 nodeLevel = VTlevelSample(MAX_LEVEL, ml);
@@ -353,7 +353,6 @@ Output: K nearest elements to q
 7 W ← SEARCH-LAYER(q, ep, ef, lc =0)
 8 return K nearest elements from W to q
 */
-
 Heap* K_NN_SEARCH(Graph* g, vec q,int32 K,int32 efsearch){
 
     Heap* W;

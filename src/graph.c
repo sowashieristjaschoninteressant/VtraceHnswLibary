@@ -26,7 +26,7 @@ VT_graph *initializeGraph(uint32 maxLayer, uint32 efConstruction, uint32 efSearc
     graph->count = 0;    
 
     graph->entrypointID = -1;
-    graph->visited = initvList(START_LAYER_NODES);
+    graph->visited = initvList(graph->maxNodeCount);
     graph->maxHeap = heap_init(graph->efconstruction, max_cmp);
     graph->minHeap = heap_init(graph->efconstruction, min_cmp);
 
@@ -67,11 +67,17 @@ void makeNode(node* node, vec v,uint32 id, uint32 nodeLevel, uint32 maxNeigbours
 
      hnswNode* nodes = realloc(graph->nodes, sizeof(hnswNode) * newMaxNodeCount);
 
-     if(!nodes){
+     // increase visited list also
+     uint32* visitedptr = realloc(graph->visited.visited, sizeof(uint32) * newMaxNodeCount);
+     
+     if(!nodes || !visitedptr){
         HNSW_LOG("cannot allocate more nodes out of memory? expandGraph\n");
         abort();
      }
 
+     graph->visited.visited = visitedptr;
+     graph->visited.size = newMaxNodeCount;
+     
      graph->nodes = nodes;
      graph->maxNodeCount = newMaxNodeCount;
 
@@ -82,13 +88,15 @@ visitedList initvList(uint32 size)
     visitedList list;
 
      list.size = size;
-   list.visited_mark = 0;
+   list.visited_mark = 1;
     list.visited = hnsw_alloc_mem(sizeof(uint32) * size);
     
     if(!list.visited){
         HNSW_LOG("error cannot allocate the visited List");
         abort();
     }
+
+    memset(list.visited, 0,sizeof(uint32) * size);
 
     return list;
 }

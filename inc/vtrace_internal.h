@@ -30,7 +30,7 @@ extern int VTlevelSample(uint32,float32);
 Heap* SEARCH_LAYER(Graph *graph,hnswNode* entryPoint, vec q,uint32 ef, uint32 lc);
 Heap* SELECT_NEIGBOURS_SIMPLE(Heap *c, uint32 M);
 Heap* SELECT_NEIGBOURS_HEURISTIC(Graph* graph,hnswNode* baseElement,Heap* workingQueue,int32 lc,int32 M,int8 FLAGS );
-void  INSERT(Graph* graph,vec vec,uint32 M, uint32 Mmax, uint32 efConstruction, uint32 ml);
+void  INSERT(Graph* graph,vec vec,int32 M, uint32 Mmax, uint32 efConstruction, uint32 ml);
 Heap* K_NN_SEARCH(Graph* g, vec q,int32 K, int32 efsearch);
 
 

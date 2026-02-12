@@ -586,12 +586,9 @@ void FULL_API_INSERT_SEARCH_TEST()
 
     Heap* r = K_NN_SEARCH(g, query, 3, g->efsearch);
 
-    
     debugPrintHeap(r);
-
     validate_graph(g);
     HNSW_LOG("OKAY FULL API WORKS!");
-
 
 }
 
@@ -640,8 +637,9 @@ void ANN_SEARCH_TEST_HEAP_TRIMMING(){
     vec q = make_vec(2, (float[]) {0.9f,0.9f});
     
     Heap* w = K_NN_SEARCH(g,q,K,ef);
-    debugPrintHeap(w); fflush(stdout);
     printf("this is the current heapSize: %i\n", w->size); fflush(stdout);
+    debugPrintHeap(w); fflush(stdout);
+    printf("end\n");    
     HNSW_ASSERT(w);
     HNSW_ASSERT(w->size == K );
     HNSW_ASSERT(heapPeek(w).id == expectedID || w->data[1].id == expectedID );
