@@ -28,7 +28,7 @@ VT_graph *initializeGraph(uint32 maxLayer, uint32 efConstruction, uint32 efSearc
     graph->entrypointID = -1;
     graph->visited = initvList(graph->maxNodeCount);
     graph->maxHeap = heap_init(graph->efconstruction, max_cmp);
-    graph->minHeap = heap_init(graph->efconstruction, min_cmp);
+    graph->minHeap = MIN_HEAP(graph->efconstruction);
 
     return graph;
 }
@@ -45,16 +45,8 @@ void makeNode(node* node, vec v,uint32 id, uint32 nodeLevel, uint32 maxNeigbours
 
   
 
-    node->neigbours = hnsw_alloc_mem(sizeof(uint32*) * (allocationLevel));
+    node->neigbours = hnsw_alloc_mem(sizeof(uint32) * (maxNeigbours * allocationLevel));
 
-    for(uint32 i = 0; i < allocationLevel; i++){
-        node->neigbours[i] = hnsw_alloc_mem(sizeof(uint32) * maxNeigbours);
-        for(uint32 j = 0; j < maxNeigbours; j++){
-            // this will never overflow unless run on a supercomputer :0 with like 10000gb of ram xd
-            node->neigbours[i][j] = UINT32_MAX; // mark empty
-
-        }
-    }
 
     node->numNeigbours = hnsw_alloc_mem(sizeof(uint32) * allocationLevel);
 
@@ -110,10 +102,11 @@ void uninitializeGraph(VT_graph *graph)
 }
 
 
- void VTaddNeigbour(node* target, uint32 neighbourId, uint32 layer, uint32 M_MAXneigbours){
-    if(M_MAXneigbours < target->numNeigbours[layer]){
+ inline void addNeigbour(node* target, uint32 neighbourId, uint32 layer, uint32 M_MAXneigbours){
+    if(M_MAXneigbours <= target->numNeigbours[layer]){
         HNSW_LOG("VTaddNeigbour to many neighbours in layer...");
-        exit(EXIT_FAILURE);
+       return;
     }
-    target->neigbours[layer][target->numNeigbours[layer]++] = neighbourId;
+
+    target->neigbours[layer * M_MAXneigbours + target->numNeigbours[layer]++] = neighbourId;
 }

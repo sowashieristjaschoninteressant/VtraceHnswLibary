@@ -1,4 +1,24 @@
 #include "vtrace_internal.h"
+#include "tests.h"
+
+__attribute__((constructor))
+static void vtrace_init(void){
+    printf("okay constructor gets called!\n");
+    
+    
+    GRAPH_TESTS();
+    HEAP_TESTS();
+    ARENA_TESTS();
+}
+
+
+
+__attribute__((destructor))
+static void vtrace_cleanup(void){
+    printf("vtrace destructor...");
+}
+
+
 /**
  * @brief
  * level sampler to create a geometric distribution between our graph layer sparse -> dense
@@ -89,15 +109,16 @@ void INSERT(Graph* graph,vec vec,int32 M, uint32 Mmax, uint32 efConstruction, ui
     for(int32 layer = MIN(ep->level, nodeLevel); layer >= 0; layer--){
         Heap* resultHeap = SEARCH_LAYER(graph,ep, vec, efConstruction, layer );
         
-        Heap* selected = SELECT_NEIGBOURS_HEURISTIC(graph,newNode,resultHeap,layer,M,0); //SELECT_NEIGBOURS_SIMPLE(resultHeap, M); // alg 3 for now might change that
+        Heap* selected = SELECT_NEIGBOURS_HEURISTIC(graph,newNode,resultHeap,layer,M,0); 
 
         for(uint32 j = 0; j < selected->size; j++){
 
             hnswNode* node = getNodeById(graph,selected->data[j].id);
             
             if(graph->M_maxNeigbours > node->numNeigbours[layer] && graph->M_maxNeigbours > newNode->numNeigbours[layer]){
-                node->neigbours[layer][node->numNeigbours[layer]++] = newNode->id;
-                newNode->neigbours[layer][newNode->numNeigbours[layer]++] = node->id;
+
+                addNeigbour(node, newNode->id, layer, graph->M_maxNeigbours);
+                addNeigbour(newNode, node->id, layer, graph->M_maxNeigbours);
                 
             }
             // TODO: okay i could implement here the algo to restructure the nodes
@@ -119,8 +140,6 @@ Input: base element q,
 Heap *SELECT_NEIGBOURS_SIMPLE(Heap *c, uint32 M)
 {
     Heap *m = MAX_HEAP(M);
-
-   
     
     maxToMinHeap(c);
 
@@ -166,7 +185,7 @@ Output: ef closest neighbors to q
 // node* SEARCH_LAYER(vec v, node* ep, uint32 ef, uint32 lc)
 Heap *SEARCH_LAYER(Graph *graph,hnswNode* entryPoint, vec q,uint32 ef, uint32 lc)
 {
-    Heap *c = MIN_HEAP(ef); // candidate list
+    Heap *c = graph->minHeap; // candidate list
     Heap *w = MAX_HEAP(ef); // closest results
     
 
@@ -179,7 +198,7 @@ Heap *SEARCH_LAYER(Graph *graph,hnswNode* entryPoint, vec q,uint32 ef, uint32 lc
 
     markNodeVisited(graph, entryPoint->id);
 
-    long double epDistance = l2_sq_distance( &entryPoint->v, &q);
+    long double epDistance = l2_sq_distance(&entryPoint->v, &q);
 
     heap_insert(c, entryPoint->id, epDistance, NULL);
     heap_insert(w, entryPoint->id, epDistance, NULL);
@@ -204,14 +223,12 @@ Heap *SEARCH_LAYER(Graph *graph,hnswNode* entryPoint, vec q,uint32 ef, uint32 lc
         
         for (uint32 i = 0; i < nabourCount; i++)
         {                    
-            node *neigbour = getNodeById(graph,currentNode->neigbours[lc][i]);
+            node *neigbour = getNodeById(graph,currentNode->neigbours[ (lc * graph->M_maxNeigbours) + i]);
 
             if (graph->visited.visited[neigbour->id] != graph->visited.visited_mark)
             {
 
                 markNodeVisited(graph, neigbour->id);
-
-
                 
                 long double dist = l2_sq_distance( &graph->nodes[neigbour->id].v, &q);
 
@@ -229,7 +246,7 @@ Heap *SEARCH_LAYER(Graph *graph,hnswNode* entryPoint, vec q,uint32 ef, uint32 lc
         }
     }
 
-    heap_dispose(c);
+    heap_reset(c);
 
     return w;
 }
@@ -284,7 +301,7 @@ Heap* SELECT_NEIGBOURS_HEURISTIC(Graph* graph,hnswNode* baseElement,Heap* workin
             hnswNode* node = getNodeById(graph, workingQueue->data[i].id);
 
             for(int32 j = 0; j < node->numNeigbours[lc]; j++){
-               hnswNode* nabour =  getNodeById(graph, node->neigbours[lc][j]);
+               hnswNode* nabour =  getNodeById(graph, node->neigbours[( lc* graph->M_maxNeigbours) + j]);
 
                float32 dist = l2_sq_distance(&baseElement->v, &nabour->v);
                if(dist < heapPeek(workingQueue).dist && graph->visited.visited[nabour->id] != graph->visited.visited_mark){
@@ -334,6 +351,8 @@ Heap* SELECT_NEIGBOURS_HEURISTIC(Graph* graph,hnswNode* baseElement,Heap* workin
             heap_insert(resultHeap,node.id,node.dist, NULL);
         }
     }
+
+    heap_reset(discarded);
     return resultHeap;
 }
 
@@ -365,12 +384,31 @@ Heap* K_NN_SEARCH(Graph* g, vec q,int32 K,int32 efsearch){
     }
 
     W = SEARCH_LAYER(g,entryPoint,q,efsearch,0);
-    printf("okay this is the heap returned by search-Layern\n");
-    debugPrintHeap(W);
-    fflush(stdout);
     W = SELECT_NEIGBOURS_SIMPLE(W,K);
 
     // explicitly trim bc i get bugs when i use optimizations
     
     return W ;
+}
+
+
+vec NN_SIMPLE_LINEAR(Graph* g, vec q){
+
+int id = 0;
+long double bestdist = LDBL_MAX;
+
+for(int i = 0; i < g->count; i++){
+
+    hnswNode* current = &g->nodes[i];
+    
+    long double currDist = l2_sq_distance(&q, &current->v);
+
+    if(currDist < bestdist){
+        bestdist = currDist;
+        id = current->id;
+    }
+}
+
+return getNodeById(g,id)->v;
+
 }

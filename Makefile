@@ -1,23 +1,22 @@
 
 CC := gcc
-OPTIMIZATION_FLAGS := -ffast-math -O3
-FLAGS := -I /Users/leon/code/hnsw/inc -pg
-BIN := vtrace
+HEADERS := -I /Users/leon/code/hnsw/inc
+LIB_FLAGS := $(HEADERS) -shared -fPIC -fvisibility=hidden
+
+OPTIMIZATION_FLAGS := -ffast-math -O3 -march=native -ffast-math -flto
 DEBUG_FLAGS := -fsanitize=address -fsanitize=undefined -Wall -Wextra -O0 -g
-NAME := vtrace
+NAME := libvtrace.so
 
 all: debug
 
 release:
-	$(CC) ./src/*.c $(FLAGS) $(OPTIMIZATION_FLAGS) -o ./bin/$(NAME)
+	$(CC) ./src/*.c $(LIB_FLAGS) $(OPTIMIZATION_FLAGS) -o ./bin/$(NAME)
 
-benchmark:
-	$(CC) ./src/*.c ./benchmark/benchmark.c $(FLAGS) $(OPTIMIZATION_FLAGS) -o ./bin/$(NAME)
+benchmark: release
+	$(CC)  ./benchmark/benchmark.c -L./bin -lvtrace $(HEADERS) $(OPTIMIZATION_FLAGS) -o ./bin/bench
+
 debug:
-	$(CC) ./src/*.c $(DEBUG_FLAGS) $(FLAGS) -o ./bin/$(NAME)
-
-lib:
-	$(CC) ./src/*.c -shared -fPIC -fvisibility=hidden -O3 -ffast-math -o bin/hnsw.so -I /Users/leon/code/hnsw/inc
+	$(CC) ./src/*.c $(DEBUG_FLAGS) $(LIB_FLAGS)  -o ./bin/$(NAME)
 
 
 clean:

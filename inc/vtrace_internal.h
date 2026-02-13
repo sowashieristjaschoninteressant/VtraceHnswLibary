@@ -16,12 +16,15 @@
 enum SELECT_NEIG_HEURISTIC_FLAGS {
     EXTENDCANDIDATES = 0,
     KEEP_P_CONN
-
 };
 
 #define HAS_FLAG(flags, bit) ((flags) & ( 1 << bit))
 #define SET_EXTENDCANDIDATES(flags) ((flags) | 1 << EXTENDCANDIDATES)
 #define SET_KEEP_P_CONN(flags) ((flags) | 1 << KEEP_P_CONN)
+
+
+
+
 
 
 
@@ -33,5 +36,6 @@ Heap* SELECT_NEIGBOURS_HEURISTIC(Graph* graph,hnswNode* baseElement,Heap* workin
 void  INSERT(Graph* graph,vec vec,int32 M, uint32 Mmax, uint32 efConstruction, uint32 ml);
 Heap* K_NN_SEARCH(Graph* g, vec q,int32 K, int32 efsearch);
 
+vec NN_SIMPLE_LINEAR(Graph* g, vec q);
 
 #endif

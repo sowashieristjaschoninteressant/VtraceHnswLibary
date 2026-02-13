@@ -7,6 +7,9 @@
 #include "vtraceCommon.h"
 #include "vec.h"
 
+
+#define VTRACE_TESTS
+
 struct timer{
     struct timespec start;
     struct timespec end;
@@ -179,7 +182,7 @@ void naive_benchmark_search(){
 
 int main(){
 
-    naive_benchmark_search();
+    naive_benchmark_insertion();
     
 
 }

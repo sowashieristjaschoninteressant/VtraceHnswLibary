@@ -11,7 +11,7 @@
 typedef struct {
   uint64 id;
   uint32 level;
-  uint32** neigbours;
+  uint32* neigbours;
   uint32* numNeigbours;
 
   vec v;
@@ -52,7 +52,7 @@ typedef Graph VT_graph;
 extern void makeNode(node* node, vec v,uint32 id, uint32 nodeLevel, uint32 maxNeigbours);
 extern VT_graph *initializeGraph(uint32 maxLayer, uint32 efConstruction, uint32 efSearch, uint32 M_maxNeigbours, uint32 maxNodeCount);
 extern void uninitializeGraph(VT_graph* graph);
-extern void VTaddNeigbour(node* target, uint32 neighbourId, uint32 layer, uint32 M_MAXneigbours);
+extern void addNeigbour(node* target, uint32 neighbourId, uint32 layer, uint32 M_MAXneigbours);
 extern void expandgraph(Graph* graph);
 
 HNSW_INLINE node* getNodeById(Graph* g, uint32 id){

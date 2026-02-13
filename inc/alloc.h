@@ -3,7 +3,7 @@
 
 #include "vtraceCommon.h"
 
-// i will write the arena firstly here
+
 
 #define KB(x) (x << 10)
 #define MB(x) (x << 20)

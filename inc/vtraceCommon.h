@@ -10,13 +10,13 @@ LIBARY INCLUDES
 #include "stdlib.h"
 #include "stdio.h"
 #include "string.h"
-#include "fcntl.h"
 #include "math.h"
 #include "time.h"
 #include "assert.h"
 #include "errno.h"
 #include "stdalign.h"
 #include "stdbool.h"
+#include "float.h"
 /*
 =====================
 CUSTOM DEFINITIONS

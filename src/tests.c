@@ -50,7 +50,7 @@ void validate_graph(Graph *g)
             HNSW_ASSERT(n->numNeigbours[l] <= g->M_maxNeigbours);
             for (uint32 j = 0; j < n->numNeigbours[l]; j++)
             {
-                uint32 nb = n->neigbours[l][j];
+                uint32 nb = n->neigbours[(l * g->M_maxNeigbours) + j];
                 HNSW_ASSERT(nb < g->count);
                 HNSW_ASSERT(nb != i);
             }
@@ -95,25 +95,22 @@ Graph *mockGraphOneLayer(uint32 efSearch)
         HNSW_ASSERT(nodes[i].numNeigbours);
         nodes[i].numNeigbours[0] = 0;
 
-        nodes[i].neigbours = hnsw_alloc_mem(sizeof(uint32 *) * LAYERS);
-        HNSW_ASSERT(nodes[i].neigbours);
-
-        nodes[i].neigbours[0] = hnsw_alloc_mem(sizeof(uint32) * M_MAXNEIGBOURS);
-        HNSW_ASSERT(nodes[i].neigbours[0]);
+        nodes[i].neigbours = hnsw_alloc_mem( M_MAXNEIGBOURS * LAYERS);
+        
         nodes[i].id = i;
     }
 
-    VTaddNeigbour(&nodes[0], 1, 0, M_MAXNEIGBOURS);
-    VTaddNeigbour(&nodes[0], 2, 0, M_MAXNEIGBOURS);
+    addNeigbour(&nodes[0], 1, 0, M_MAXNEIGBOURS);
+    addNeigbour(&nodes[0], 2, 0, M_MAXNEIGBOURS);
 
-    VTaddNeigbour(&nodes[1], 0, 0, M_MAXNEIGBOURS);
-    VTaddNeigbour(&nodes[1], 3, 0, M_MAXNEIGBOURS);
+    addNeigbour(&nodes[1], 0, 0, M_MAXNEIGBOURS);
+    addNeigbour(&nodes[1], 3, 0, M_MAXNEIGBOURS);
 
-    VTaddNeigbour(&nodes[2], 0, 0, M_MAXNEIGBOURS);
-    VTaddNeigbour(&nodes[2], 3, 0, M_MAXNEIGBOURS);
+    addNeigbour(&nodes[2], 0, 0, M_MAXNEIGBOURS);
+    addNeigbour(&nodes[2], 3, 0, M_MAXNEIGBOURS);
 
-    VTaddNeigbour(&nodes[3], 1, 0, M_MAXNEIGBOURS);
-    VTaddNeigbour(&nodes[3], 2, 0, M_MAXNEIGBOURS);
+    addNeigbour(&nodes[3], 1, 0, M_MAXNEIGBOURS);
+    addNeigbour(&nodes[3], 2, 0, M_MAXNEIGBOURS);
     
 
     graph->nodes = nodes;
@@ -162,31 +159,30 @@ Graph* mockGraphTwoLayer(int32 efSearch){
         HNSW_ASSERT(nodes[i].numNeigbours);
         nodes[i].numNeigbours[0] = 0;
 
-        nodes[i].neigbours = hnsw_alloc_mem(sizeof(uint32 *) * LAYERS);
+        nodes[i].neigbours = hnsw_alloc_mem(M_MAXNEIGBOURS * LAYERS);
         HNSW_ASSERT(nodes[i].neigbours);
 
-        nodes[i].neigbours[0] = hnsw_alloc_mem(sizeof(uint32) * M_MAXNEIGBOURS);
-        HNSW_ASSERT(nodes[i].neigbours[0]);
+       
         nodes[i].id = i;
     }
 
-    VTaddNeigbour(&nodes[0], 1, 0, M_MAXNEIGBOURS);
-    VTaddNeigbour(&nodes[0], 2, 0, M_MAXNEIGBOURS);
+    addNeigbour(&nodes[0], 1, 0, M_MAXNEIGBOURS);
+    addNeigbour(&nodes[0], 2, 0, M_MAXNEIGBOURS);
 
-    VTaddNeigbour(&nodes[1], 0, 0, M_MAXNEIGBOURS);
-    VTaddNeigbour(&nodes[1], 3, 0, M_MAXNEIGBOURS);
+    addNeigbour(&nodes[1], 0, 0, M_MAXNEIGBOURS);
+    addNeigbour(&nodes[1], 3, 0, M_MAXNEIGBOURS);
 
-    VTaddNeigbour(&nodes[2], 0, 0, M_MAXNEIGBOURS);
-    VTaddNeigbour(&nodes[2], 3, 0, M_MAXNEIGBOURS);
+    addNeigbour(&nodes[2], 0, 0, M_MAXNEIGBOURS);
+    addNeigbour(&nodes[2], 3, 0, M_MAXNEIGBOURS);
 
-    VTaddNeigbour(&nodes[3], 1, 0, M_MAXNEIGBOURS);
-    VTaddNeigbour(&nodes[3], 2, 0, M_MAXNEIGBOURS);
+    addNeigbour(&nodes[3], 1, 0, M_MAXNEIGBOURS);
+    addNeigbour(&nodes[3], 2, 0, M_MAXNEIGBOURS);
 
-    VTaddNeigbour(&nodes[4], 3, 0, M_MAXNEIGBOURS);
-    VTaddNeigbour(&nodes[4], 1, 0, M_MAXNEIGBOURS);
+    addNeigbour(&nodes[4], 3, 0, M_MAXNEIGBOURS);
+    addNeigbour(&nodes[4], 1, 0, M_MAXNEIGBOURS);
 
-    VTaddNeigbour(&nodes[3], 4, 0, M_MAXNEIGBOURS);
-    VTaddNeigbour(&nodes[1], 4, 0, M_MAXNEIGBOURS);
+    addNeigbour(&nodes[3], 4, 0, M_MAXNEIGBOURS);
+    addNeigbour(&nodes[1], 4, 0, M_MAXNEIGBOURS);
 
     graph->nodes = nodes;
     graph->count = 5;
@@ -727,13 +723,14 @@ void test_bidirectionalLinks()
         {
             for (uint32 k = 0; k < node->numNeigbours[l]; k++)
             {
-                uint32 nid = node->neigbours[l][k];
+                uint32 nid = node->neigbours[l * graph->M_maxNeigbours + k];
+
                 hnswNode *other = &graph->nodes[nid];
 
                 bool found = false;
                 for (uint32 kk = 0; kk < other->numNeigbours[l]; kk++)
                 {
-                    if (other->neigbours[l][kk] == i)
+                    if (other->neigbours[l * graph->M_maxNeigbours + kk] == i)
                     {
                         found = true;
                     }

@@ -8,6 +8,14 @@
 #endif
 #include"stdlib.h"
 
+struct hnsw_result_set{
+    size_t size;
+    int32_t* ids;
+    float* distances;
+};
+
+typedef struct hnsw_result_set hnswResult;
+
 
 typedef struct vector vec;
 
