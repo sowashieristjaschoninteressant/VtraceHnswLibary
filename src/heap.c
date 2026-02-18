@@ -1,4 +1,5 @@
 #include "heap.h"
+#include "alloc.h"
 
 HNSW_INLINE uint32 parent(uint32 i) { 
     return (i - 1) / 2; 
@@ -56,7 +57,7 @@ HNSW_INLINE void siftDown(Heap* heap, uint32 index){
 
 Heap* heap_init(uint32 capacity, cmp cmpFunc){
 
-    Heap* heap = malloc(sizeof(Heap));
+    Heap* heap = hnsw_alloc_mem(sizeof(Heap), alignof(Heap));
     
     HNSW_ASSERT(heap);
     heap->data = malloc(sizeof(heapItem) * capacity);
@@ -83,9 +84,8 @@ void maxToMinHeap(Heap* heap){
 }
 
 void heap_dispose(Heap* heap){
-   
-    free(heap->data);
-    free(heap);
+    hnsw_free_mem(heap->data);
+    hnsw_free_mem(heap);
 }
 
 void heap_insert(Heap* heap, uint32 id, float32 dist, void* data){
@@ -148,4 +148,20 @@ void heapify(Heap* heap) {
     for (int32 i = heap->size / 2 - 1; i >= 0; i--) {
         siftDown(heap, i);
     }
+}
+
+void maxHeapToSortedAscending(Heap* heap, sortedBuffer* buffer){
+ 
+    int32 originalSize = heap->size;
+ 
+    for(int32 i = originalSize - 1; i > 0; i--){
+        
+        swap(&heap->data[0], &heap->data[i]);
+        heap->size--;
+        siftDown(heap, 0);
+    }
+ 
+    heap->size = originalSize;
+    buffer->data = heap->data;
+    buffer->size = heap->size;
 }

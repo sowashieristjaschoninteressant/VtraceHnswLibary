@@ -1,13 +1,36 @@
 #include "alloc.h"
 
+static hnsw_chainAllocator* globalChainAllocator = NULL;
 
-void* hnsw_alloc_mem(size_t size){
+hnsw_chainAllocator* get_global_chainArena(void){
+
+    if(!globalChainAllocator){
+        globalChainAllocator = init_chainArena(DEFAULT_ARRAY_SIZE, DEFAULT_CHUNK_SIZE);
+    }
+
+    return globalChainAllocator;
+}
+
+void* global_chainArena_alloc(uint32 size, uint32 alignment){
+
+    return chainArenaAlloc(get_global_chainArena(), size, alignment);
+}
+
+void destroy_global_chainArena(void){
+
+    if(globalChainAllocator){
+        chainArena_destroy(globalChainAllocator);
+        globalChainAllocator = NULL;
+    }
+}
+
+void* hnsw_alloc_mem(size_t size, uint32 alignment){
     if(size <= 0 ){
         HNSW_LOG("alloc(0) is invalid");
         exit(EXIT_FAILURE);
     }
-    
-    void* mem = malloc(size);
+     
+    void* mem = global_chainArena_alloc(size, alignment);
     if(!mem){
         HNSW_LOG("out of memory");
         exit(EXIT_FAILURE);
@@ -16,7 +39,7 @@ void* hnsw_alloc_mem(size_t size){
 }
 
 void hnsw_free_mem(void* ptr){
-    free(ptr);
+    return;
 }
 
 
@@ -58,9 +81,10 @@ void hnsw_free_mem(void* ptr){
  void* arena_alloc( hnswArena* arena ,uint32 bytes, uint32 alignment){
     uint32 alignedOffset = align_up(arena->offset, alignment);
     void* ptr;
-    
+   //  printf("Arena alloc: bytes=%u, alignedOffset=%u, arenaSize=%u\n", bytes, alignedOffset, arena->size);
+   
     if(bytes > arena->size  - alignedOffset){
-        HNSW_LOG("arena is full!");
+        //HNSW_LOG("arena is full!");
         return NULL;
     }
 
@@ -127,7 +151,7 @@ void hnsw_free_mem(void* ptr){
             alignment
         );
     }
-
+   
     /* if not we need to grow chainArena*/
 
     uint32 oldSize = chainAllocator->arraySize;

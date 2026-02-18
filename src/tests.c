@@ -16,7 +16,7 @@ static inline float32 getRandFloat(float32 min, float32 max)
 float32 *generateRandVec(uint32 size, float32 min, float32 max)
 {
 
-    float32 *farray = hnsw_alloc_mem(sizeof(float32) * size);
+    float32 *farray = malloc(sizeof(float32) * size);
     assert(farray);
 
     for (uint32 i = 0; i < size; i++)
@@ -75,7 +75,7 @@ Graph *mockGraphOneLayer(uint32 efSearch)
     float32 vals2[] = {0.0f, 1.0f};
     float32 vals3[] = {1.0f, 1.0f};
 
-    vec *testVectores = hnsw_alloc_mem(sizeof(vec) * vectorCount);
+    vec *testVectores = hnsw_alloc_mem(sizeof(vec) * vectorCount, alignof(vec));
     HNSW_ASSERT(testVectores);
 
     testVectores[0] = make_vec(2, vals0);
@@ -83,7 +83,7 @@ Graph *mockGraphOneLayer(uint32 efSearch)
     testVectores[2] = make_vec(2, vals2);
     testVectores[3] = make_vec(2, vals3);
 
-    node *nodes = hnsw_alloc_mem(sizeof(node) * 4);
+    node *nodes = hnsw_alloc_mem(sizeof(node) * 4, alignof(node));
     HNSW_ASSERT(nodes);
 
     for (uint32 i = 0; i < 4; i++)
@@ -91,11 +91,11 @@ Graph *mockGraphOneLayer(uint32 efSearch)
 
         nodes[i].v = testVectores[i];
 
-        nodes[i].numNeigbours = hnsw_alloc_mem((sizeof(uint32) * LAYERS));
+        nodes[i].numNeigbours = hnsw_alloc_mem((sizeof(uint32) * LAYERS), alignof(uint32));
         HNSW_ASSERT(nodes[i].numNeigbours);
         nodes[i].numNeigbours[0] = 0;
 
-        nodes[i].neigbours = hnsw_alloc_mem( M_MAXNEIGBOURS * LAYERS);
+        nodes[i].neigbours = hnsw_alloc_mem( sizeof(uint32) * (M_MAXNEIGBOURS * LAYERS), alignof(uint32));
         
         nodes[i].id = i;
     }
@@ -138,7 +138,7 @@ Graph* mockGraphTwoLayer(int32 efSearch){
     float32 vals3[] = {1.0f, 1.0f};
     float32 vals4[] = {0.95, 0.95f};
 
-    vec *testVectores = hnsw_alloc_mem(sizeof(vec) * vectorCount);
+    vec *testVectores = hnsw_alloc_mem(sizeof(vec) * vectorCount, alignof(vec));
     HNSW_ASSERT(testVectores);
 
     testVectores[0] = make_vec(2, vals0);
@@ -147,7 +147,7 @@ Graph* mockGraphTwoLayer(int32 efSearch){
     testVectores[3] = make_vec(2, vals3);
     testVectores[4] = make_vec(2, vals4);
 
-    node *nodes = hnsw_alloc_mem(sizeof(node) * 5);
+    node *nodes = hnsw_alloc_mem(sizeof(node) * 5, alignof(node));
     HNSW_ASSERT(nodes);
 
     for (uint32 i = 0; i < vectorCount; i++)
@@ -155,11 +155,11 @@ Graph* mockGraphTwoLayer(int32 efSearch){
 
         nodes[i].v = testVectores[i];
 
-        nodes[i].numNeigbours = hnsw_alloc_mem((sizeof(uint32) * LAYERS));
+        nodes[i].numNeigbours = hnsw_alloc_mem((sizeof(uint32) * LAYERS), alignof(uint32));
         HNSW_ASSERT(nodes[i].numNeigbours);
         nodes[i].numNeigbours[0] = 0;
 
-        nodes[i].neigbours = hnsw_alloc_mem(M_MAXNEIGBOURS * LAYERS);
+        nodes[i].neigbours = hnsw_alloc_mem(sizeof(uint32) * (M_MAXNEIGBOURS * LAYERS), alignof(uint32));
         HNSW_ASSERT(nodes[i].neigbours);
 
        
@@ -473,8 +473,8 @@ void SELECT_NEAREST_NABOURS()
     float distances[] = {10.5, 2.3, 7.7, 4.4, 6.6, 1.1, 8.8};
     uint32 num_candidates = sizeof(distances) / sizeof(distances[0]);
     uint32 M = 3; 
-
-  
+    Graph* g = mockGraphOneLayer(20);
+    //Grapg* g = initializeGraph()
     Heap *c = heap_init(num_candidates, max_cmp);
     for (uint32 i = 0; i < num_candidates; i++)
     {
@@ -485,7 +485,7 @@ void SELECT_NEAREST_NABOURS()
     debugPrintHeap(c);
 
     // Step 2: Select M nearest neighbors
-    Heap *m = SELECT_NEIGBOURS_SIMPLE(c, M);
+    Heap *m = SELECT_NEIGBOURS_SIMPLE(g,c, M);
 
     // Step 3: Pop from the resulting max-heap to get M closest
     printf("\nSelected %u nearest neighbors (max-heap root = farthest of the closest):\n", M);
@@ -497,7 +497,6 @@ void SELECT_NEAREST_NABOURS()
 
     // Cleanup
     heap_dispose(c);
-    heap_dispose(m);
 }
 
 void SIMPLE_SEARCH_LAYERTEST()
@@ -507,19 +506,19 @@ void SIMPLE_SEARCH_LAYERTEST()
     Graph *graph = mockGraphOneLayer(4);
     vec query = make_vec(2, (float[]){0.1f, 0.1f});
     hnswNode* ep = getNodeById(graph, graph->entrypointID);
-    Heap *results = SEARCH_LAYER(graph,ep, query, graph->efsearch, 0);
+    sortedBuffer*results = SEARCH_LAYER(graph,ep, query, graph->efsearch, 0);
 
-    const uint32 expectedResultIds[] = {3, 1, 2, 0};
+    const uint32 expectedResultIds[] = {0, 2, 1, 3};
     int resultIteration = 0;
-    while (results->size > 0)
+    for(int32 i = 0; i < results->size; i++)
     {
 
-        heapItem temp = heapPop(results);
+        heapItem temp = results->data[i];
         HNSW_ASSERT(temp.id == expectedResultIds[resultIteration++]);
         //printf("these are the results id:  %i distance: %f\n", temp.id, temp.dist);
     }
     HNSW_LOG("SEARCH-LAYER WORKING");
-    heap_dispose(results);
+    
 }
 
 void INIT_GRAPH_TEST()
@@ -538,8 +537,11 @@ void INIT_GRAPH_TEST()
     HNSW_ASSERT(graph->M_maxNeigbours == M_maxNeigbours);
     HNSW_ASSERT(graph->maxLayer == maxLayer);
     HNSW_ASSERT(graph->nodes);
-    HNSW_ASSERT(graph->maxHeap);
-    HNSW_ASSERT(graph->minHeap);
+    HNSW_ASSERT(graph->storage.candidateHeap);
+    HNSW_ASSERT(graph->storage.simpleHeap);
+    HNSW_ASSERT(graph->storage.discardedHeap);
+    HNSW_ASSERT(graph->storage.closestResults);
+    HNSW_ASSERT(graph->storage.resultHeap);
     HNSW_ASSERT(graph->visited.visited);
 
     uninitializeGraph(graph);
@@ -567,7 +569,8 @@ void FULL_API_INSERT_SEARCH_TEST()
     const int32 maxSize = 5000;
     const int32 dim = 5;
     Graph* g = initializeGraph(10, 20, 10, 20, maxSize);
-    vec* vecs = hnsw_alloc_mem(sizeof(vec) * maxSize);
+    vec* vecs = malloc(sizeof(vec) * maxSize);
+    assert(vecs);
 
     float32 ml = 1 / log(g->M_maxNeigbours);
     

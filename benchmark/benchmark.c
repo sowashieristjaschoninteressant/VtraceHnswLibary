@@ -126,6 +126,78 @@ void naive_benchmark_insertion(){
 
 }
 
+void benchmark_search_throughput() {
+    FILE* filep = fopen("benchmark_search_throughput.csv", "w");
+    if(!filep){
+        perror("Cannot open CSV file");
+        return;
+    }
+    fprintf(filep, "N,dimension,M,ef_search,avg_latency_ms,qps\n");
+
+    // --- Benchmark parameters ---
+    const int dim = 128;         // vector dimension
+    const int M = 16;            // max neighbors
+    const int ef_search = 200;   // ef search parameter
+    const int nodes = 50000;     // number of vectors in the graph
+    const int num_queries = 10000; // number of queries to benchmark
+
+    // --- Initialize HNSW graph ---
+    HNSW* graph = hnsw_init(ef_search);
+    vec* vecs = genVecArray(nodes, dim);
+    HNSW_LOG("Inserting vectors into HNSW graph...");
+    for (int i = 0; i < nodes; i++) {
+        hnsw_insert(graph, &vecs[i], M);
+    }
+
+    // --- Generate query vectors ---
+    vec* queries = genVecArray(num_queries, dim);
+    struct hnsw_result_set r;
+
+    HNSW_LOG("Starting search throughput benchmark...");
+
+    // --- Volatile sink to prevent compiler optimization ---
+    volatile float sink = 0.0f;
+
+    struct timer t;
+    timer_start(&t);
+
+    for (int i = 0; i < num_queries; i++) {
+        hnsw_search(graph, &queries[i], M, &r);
+
+        // accumulate distances to prevent optimization
+        for (int j = 0; j < r.size; j++) {
+            sink += r.distances[j];
+        }
+    }
+
+    timer_stop(&t);
+
+    double total_sec = getElapsed(&t);
+    double avg_latency_ms = (total_sec / num_queries) * 1000.0; // convert to ms
+    double qps = num_queries / total_sec;
+
+    printf("[!] Sink: %.6f (to prevent optimization)\n", sink);
+    printf("Search benchmark results:\n");
+    printf("Nodes: %d, Queries: %d, Avg latency: %.3f ms, Throughput: %.2f QPS\n",
+           nodes, num_queries, avg_latency_ms, qps);
+
+    fprintf(filep, "%d,%d,%d,%d,%.6f,%.2f\n",
+            nodes, dim, M, ef_search, avg_latency_ms, qps);
+
+    // --- Clean up ---
+    for (int i = 0; i < nodes; i++) free(vecs[i].vec);
+    free(vecs);
+
+    for (int i = 0; i < num_queries; i++) free(queries[i].vec);
+    free(queries);
+
+    fclose(filep);
+
+    // Free HNSW graph
+    hnsw_free(graph);
+}
+
+
 void naive_benchmark_search(){
     FILE* filep = cFile("naive_benchmark_search.csv");
     fprintf(filep, "N,dimension,M,ef_search,search_time_ms\n");
@@ -182,7 +254,8 @@ void naive_benchmark_search(){
 
 int main(){
 
-    naive_benchmark_insertion();
+    
+    benchmark_search_throughput();
     
 
 }

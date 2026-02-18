@@ -17,6 +17,9 @@ LIBARY INCLUDES
 #include "stdalign.h"
 #include "stdbool.h"
 #include "float.h"
+#include "stddef.h"
+#include "arm_neon.h"
+
 /*
 =====================
 CUSTOM DEFINITIONS

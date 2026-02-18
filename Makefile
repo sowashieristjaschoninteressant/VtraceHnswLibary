@@ -18,6 +18,8 @@ benchmark: release
 debug:
 	$(CC) ./src/*.c $(DEBUG_FLAGS) $(LIB_FLAGS)  -o ./bin/$(NAME)
 
+debugTest: debug
+	$(CC) ./debug/debug.c -L./bin -lvtrace $(HEADERS) $(DEBUG_FLAGS) -o ./bin/debug
 
 clean:
 	rm -rf ./bin/*

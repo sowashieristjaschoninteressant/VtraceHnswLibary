@@ -8,6 +8,14 @@
 #define START_LAYER_NODES 10000
 #define DEFAULT_MAX_NEIGBOURS 64
 
+
+struct graph_internal_Storage{
+   Heap* candidateHeap,*discardedHeap,*resultHeap, *closestResults, *simpleHeap;
+   sortedBuffer* buffer;
+};
+
+typedef struct graph_internal_Storage graphInternalStorage;
+
 typedef struct {
   uint64 id;
   uint32 level;
@@ -39,12 +47,15 @@ visitedList initvList(uint32 size);
   uint64 count;
   uint64 maxNodeCount;
 
+
   int64 entrypointID;
   visitedList visited;
   node* nodes;
-  Heap* maxHeap,* minHeap;
+  graphInternalStorage storage;
+
   
 };
+
 
 typedef struct Graph Graph;
 
@@ -54,7 +65,7 @@ extern VT_graph *initializeGraph(uint32 maxLayer, uint32 efConstruction, uint32 
 extern void uninitializeGraph(VT_graph* graph);
 extern void addNeigbour(node* target, uint32 neighbourId, uint32 layer, uint32 M_MAXneigbours);
 extern void expandgraph(Graph* graph);
-
+void initStorage(Graph* graph);
 HNSW_INLINE node* getNodeById(Graph* g, uint32 id){
   return &g->nodes[id];
 }
@@ -66,8 +77,6 @@ HNSW_INLINE void incVisitedMark(Graph* g){
 HNSW_INLINE void markNodeVisited(Graph* g, uint64 id){
       if(!g->visited.visited || id > g->visited.size){
           printf("id index: %lu\n", id);
-          
-         
           HNSW_LOG("visit list needs to grow");
           abort();
         }

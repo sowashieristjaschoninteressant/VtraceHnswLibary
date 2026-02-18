@@ -1,23 +1,23 @@
 #include "vtrace_internal.h"
 #include "tests.h"
 
-__attribute__((constructor))
-static void vtrace_init(void){
+__attribute__((constructor)) static void vtrace_init(void)
+{
     printf("okay constructor gets called!\n");
-    
+    // instaniate
+   
     
     GRAPH_TESTS();
     HEAP_TESTS();
     ARENA_TESTS();
 }
 
-
-
-__attribute__((destructor))
-static void vtrace_cleanup(void){
+__attribute__((destructor)) static void vtrace_cleanup(void)
+{
     printf("vtrace destructor...");
-}
 
+    destroy_global_chainArena();
+}
 
 /**
  * @brief
@@ -68,90 +68,94 @@ Output: update hnsw inserting element q
 18 if l > L
 19 set enter point for hnsw to q
  */
-void INSERT(Graph* graph,vec vec,int32 M, uint32 Mmax, uint32 efConstruction, uint32 ml){
-    
-    hnswNode* originalEP,* ep,* newNode;
+void INSERT(Graph *graph, vec vec, int32 M, uint32 Mmax, uint32 efConstruction, uint32 ml)
+{
+
+    hnswNode *originalEP, *ep, *newNode;
     int32 nodeLevel = VTlevelSample(MAX_LEVEL, ml);
     uint32 id = graph->count;
-    
-    if(graph->maxNodeCount <= id){
-       HNSW_LOG("graph is expanding!");
-	    expandgraph(graph);
-    }
 
+    if (graph->maxNodeCount <= id)
+    {
+        HNSW_LOG("graph is expanding!");
+        expandgraph(graph);
+    }
 
     newNode = getNodeById(graph, id);
 
-    makeNode(newNode, vec,id, nodeLevel, graph->M_maxNeigbours);
+    makeNode(newNode, vec, id, nodeLevel, graph->M_maxNeigbours);
 
-    #ifdef BILLION_SEARCH_HNSW
+#ifdef BILLION_SEARCH_HNSW
     // this is a hot loop so lets just write it like this. this will never happen basically unless you save over 4Billion nodes in this structure but i belive no consumer hardware has even the memory capacity for smth like that
-    if(graph->count == UINT32_MAX){
+    if (graph->count == UINT32_MAX)
+    {
         HNSW_LOG("node ID overflow!");
         abort();
     }
-    #endif
-    
-    if(graph->entrypointID < 0){
+#endif
+
+    if (graph->entrypointID < 0)
+    {
         graph->entrypointID = newNode->id;
         graph->maxLayer = newNode->level;
         graph->count++;
         return;
     }
 
-    originalEP = ep = getNodeById(graph,graph->entrypointID);
+    originalEP = ep = getNodeById(graph, graph->entrypointID);
+    sortedBuffer *W;
 
-    for( int32 j = nodeLevel; j > ep->level; j-- ){
-        Heap* W = SEARCH_LAYER(graph,ep, vec, 1 ,j);
-        ep = getNodeById( graph, heapPeek(W).id);
+    for (int32 j = graph->maxLayer; j > nodeLevel; j--)
+    {
+        W = SEARCH_LAYER(graph, ep, vec, 1, j);
+        ep = getNodeById(graph, heapPeek(W).id);
     }
 
-    for(int32 layer = MIN(ep->level, nodeLevel); layer >= 0; layer--){
-        Heap* resultHeap = SEARCH_LAYER(graph,ep, vec, efConstruction, layer );
-        
-        Heap* selected = SELECT_NEIGBOURS_HEURISTIC(graph,newNode,resultHeap,layer,M,0); 
+    for (int32 layer = MIN(ep->level, nodeLevel); layer >= 0; layer--)
+    {
+        sortedBuffer *resultBuffer = SEARCH_LAYER(graph, ep, vec, efConstruction, layer);
 
-        for(uint32 j = 0; j < selected->size; j++){
 
-            hnswNode* node = getNodeById(graph,selected->data[j].id);
-            
-            if(graph->M_maxNeigbours > node->numNeigbours[layer] && graph->M_maxNeigbours > newNode->numNeigbours[layer]){
+        Heap *selected = SELECT_NEIGBOURS_HEURISTIC(graph, newNode, resultBuffer, layer, M, 0);
+
+        for (uint32 j = 0; j < selected->size; j++)
+        {
+
+            hnswNode *node = getNodeById(graph, selected->data[j].id);
+
+            if (graph->M_maxNeigbours > node->numNeigbours[layer] && graph->M_maxNeigbours > newNode->numNeigbours[layer])
+            {
 
                 addNeigbour(node, newNode->id, layer, graph->M_maxNeigbours);
                 addNeigbour(newNode, node->id, layer, graph->M_maxNeigbours);
-                
             }
             // TODO: okay i could implement here the algo to restructure the nodes
         }
     }
+   
 
     graph->count++;
 
-    if( newNode->level > originalEP->level){
+    if (newNode->level > originalEP->level)
+    {
         graph->entrypointID = newNode->id;
         graph->maxLayer = newNode->level;
     }
 }
 
-/*Algorithm 3 SELECT-NEIGHBORS-SIMPLE(q, C, M) 
+/*Algorithm 3 SELECT-NEIGHBORS-SIMPLE(q, C, M)
 Input: base element q,
- candidate elements C, number of neighbors to return M 
+ candidate elements C, number of neighbors to return M
  Output: M nearest elements to q return M nearest elements from C to q*/
-Heap *SELECT_NEIGBOURS_SIMPLE(Heap *c, uint32 M)
+Heap *SELECT_NEIGBOURS_SIMPLE(Graph *g, sortedBuffer *c, uint32 M)
 {
-    Heap *m = MAX_HEAP(M);
-    
-    maxToMinHeap(c);
+    Heap *m = g->storage.simpleHeap;
+    heap_reset(m);
 
-    while (c->size > 0)
+    for (int32 i = 0; i < c->size && m->size < M; i++)
     {
-        if(m->size >= M){
-            break;
-        }
-        heapItem current = heapPop(c);
 
-        heap_insert(m, current.id, current.dist, NULL );
-
+        heap_insert(m, c->data[i].id, c->data[i].dist, NULL);
     }
     return m;
 }
@@ -183,11 +187,16 @@ Output: ef closest neighbors to q
  */
 
 // node* SEARCH_LAYER(vec v, node* ep, uint32 ef, uint32 lc)
-Heap *SEARCH_LAYER(Graph *graph,hnswNode* entryPoint, vec q,uint32 ef, uint32 lc)
+sortedBuffer *SEARCH_LAYER(Graph *graph, hnswNode *entryPoint, vec q, uint32 ef, uint32 lc)
 {
-    Heap *c = graph->minHeap; // candidate list
-    Heap *w = MAX_HEAP(ef); // closest results
-    
+
+    Heap *c = graph->storage.candidateHeap;  // min heap candidate list
+    Heap *w = graph->storage.closestResults; // closest results
+
+    sortedBuffer *buffer = graph->storage.buffer;
+
+    heap_reset(c);
+    heap_reset(w);
 
     incVisitedMark(graph);
 
@@ -198,7 +207,7 @@ Heap *SEARCH_LAYER(Graph *graph,hnswNode* entryPoint, vec q,uint32 ef, uint32 lc
 
     markNodeVisited(graph, entryPoint->id);
 
-    long double epDistance = l2_sq_distance(&entryPoint->v, &q);
+    float32 epDistance = l2_sq_distance_neon_128v(&entryPoint->v, &q);
 
     heap_insert(c, entryPoint->id, epDistance, NULL);
     heap_insert(w, entryPoint->id, epDistance, NULL);
@@ -206,33 +215,33 @@ Heap *SEARCH_LAYER(Graph *graph,hnswNode* entryPoint, vec q,uint32 ef, uint32 lc
     while (c->size > 0)
     {
         heapItem current = heapPop(c);
-        
 
         if (w->size >= ef && current.dist > heapPeek(w).dist)
         {
-          //  HNSW_LOG("all elements are evaluated in searchLayer");
-            
+            //  HNSW_LOG("all elements are evaluated in searchLayer");
+
             break;
         }
 
         node *currentNode = &graph->nodes[current.id];
 
-        if(lc > currentNode->level) continue;
+        if (lc > currentNode->level)
+            continue;
 
         uint32 nabourCount = currentNode->numNeigbours[lc];
-        
+
         for (uint32 i = 0; i < nabourCount; i++)
-        {                    
-            node *neigbour = getNodeById(graph,currentNode->neigbours[ (lc * graph->M_maxNeigbours) + i]);
+        {
+            node *neigbour = getNodeById(graph, currentNode->neigbours[(lc * graph->M_maxNeigbours) + i]);
 
             if (graph->visited.visited[neigbour->id] != graph->visited.visited_mark)
             {
 
                 markNodeVisited(graph, neigbour->id);
-                
-                long double dist = l2_sq_distance( &graph->nodes[neigbour->id].v, &q);
 
-                if (dist + EPSILON <  heapPeek(w).dist || w->size < ef)
+                float32 dist = l2_sq_distance_neon_128v(&neigbour->v, &q);
+
+                if (dist + EPSILON < heapPeek(w).dist || w->size < ef)
                 {
                     heap_insert(c, neigbour->id, dist, NULL);
                     heap_insert(w, neigbour->id, dist, NULL);
@@ -246,13 +255,10 @@ Heap *SEARCH_LAYER(Graph *graph,hnswNode* entryPoint, vec q,uint32 ef, uint32 lc
         }
     }
 
-    heap_reset(c);
+    maxHeapToSortedAscending(w, buffer);
 
-    return w;
+    return buffer;
 }
-
-
-
 
 /*
 Algorithm 4
@@ -282,80 +288,81 @@ Output: M elements selected by the heuristic
 16 while │Wd│> 0 and │R│< M
 17 R ← R ⋃ extract nearest element from Wd to q
 
-// FLAGS 
+// FLAGS
 extend connections
 keepPrunnedConnections
 18 return R*/
 
+Heap *SELECT_NEIGBOURS_HEURISTIC(Graph *graph, hnswNode *baseElement, sortedBuffer *candidates, int32 lc, int32 M, int8 FLAGS)
+{
+    Heap *resultHeap = graph->storage.resultHeap; // maxheap
+    Heap *discarded = graph->storage.discardedHeap;
 
-Heap* SELECT_NEIGBOURS_HEURISTIC(Graph* graph,hnswNode* baseElement,Heap* workingQueue,int32 lc,int32 M,int8 FLAGS ){
-    Heap* resultHeap = MAX_HEAP(M);
-    Heap* discarded = MIN_HEAP(M);
+    heap_reset(resultHeap);
+    heap_reset(discarded);
 
     // switch worst with better
     // extendCandidates
-    if(HAS_FLAG(FLAGS,EXTENDCANDIDATES)){
-        
+    if (HAS_FLAG(FLAGS, EXTENDCANDIDATES))
+    {
 
-        for( int32 i = 0; i < workingQueue->size; i++){
-            hnswNode* node = getNodeById(graph, workingQueue->data[i].id);
+        for (int32 i = 0; i < candidates->size; i++)
+        {
+            hnswNode *node = getNodeById(graph, candidates->data[i].id);
 
-            for(int32 j = 0; j < node->numNeigbours[lc]; j++){
-               hnswNode* nabour =  getNodeById(graph, node->neigbours[( lc* graph->M_maxNeigbours) + j]);
+            for (int32 j = 0; j < node->numNeigbours[lc]; j++)
+            {
+                hnswNode *nabour = getNodeById(graph, node->neigbours[(lc * graph->M_maxNeigbours) + j]);
 
-               float32 dist = l2_sq_distance(&baseElement->v, &nabour->v);
-               if(dist < heapPeek(workingQueue).dist && graph->visited.visited[nabour->id] != graph->visited.visited_mark){
-                    markNodeVisited(graph, nabour->id); 
-                    
-                    heap_insert(workingQueue, nabour->id, dist, NULL);
-               }
+                float32 dist = l2_sq_distance_neon_128v(&baseElement->v, &nabour->v);
+                if (dist < heapPeek(candidates).dist && graph->visited.visited[nabour->id] != graph->visited.visited_mark)
+                {
+                    markNodeVisited(graph, nabour->id);
+
+                    //  heap_insert(candidates, nabour->id, dist, NULL);
+                }
             }
-
         }
-        
     }
 
-    maxToMinHeap(workingQueue);
-    // core algo 
+    for (int32 i = 0; i < candidates->size && resultHeap->size < M; i++)
+    {
+        heapItem currItem = candidates->data[i];
+        hnswNode *current = getNodeById(graph, currItem.id);
 
-    while(workingQueue->size > 0){
-        if(resultHeap->size == M) break;
+        float32 distToBase = currItem.dist;
 
         bool ok = true;
-        heapItem currHeapI = heapPop(workingQueue);
-        hnswNode* current = getNodeById(graph,currHeapI.id);
 
-        float32 distToBase = l2_sq_distance(&current->v, &baseElement->v);
+        for (uint32 j = 0; j < resultHeap->size; j++)
+        {
+            hnswNode *r = getNodeById(graph, resultHeap->data[j].id);
 
-        for(int32 j = 0; j < resultHeap->size; j++){
-
-            hnswNode* r = getNodeById(graph, resultHeap->data[j].id);
-
-            if(l2_sq_distance(&current->v, &r->v)  <= distToBase){
+            if (l2_sq_distance_neon_128v(&current->v, &r->v) <= distToBase)
+            {
                 ok = false;
-                break; // to close to someone reject
+                break;
             }
         }
 
-        if(ok){
-            heap_insert(resultHeap, current->id, currHeapI.dist, NULL);
-        }else{
-            heap_insert(discarded, current->id, currHeapI.dist, NULL);
-        }
+        if (ok)
+            heap_insert(resultHeap, current->id, distToBase, NULL);
+        else if (HAS_FLAG(FLAGS, KEEP_P_CONN))
+            heap_insert(discarded, current->id, distToBase, NULL);
     }
 
     // keep Pruned connections
-    if(HAS_FLAG(FLAGS,KEEP_P_CONN)){
-        while(discarded->size > 0 && resultHeap->size < M){
-            heapItem node =  heapPop(discarded);
-            heap_insert(resultHeap,node.id,node.dist, NULL);
+    if (HAS_FLAG(FLAGS, KEEP_P_CONN))
+    {
+        while (discarded->size > 0 && resultHeap->size < M)
+        {
+            heapItem node = heapPop(discarded);
+            heap_insert(resultHeap, node.id, node.dist, NULL);
         }
     }
 
-    heap_reset(discarded);
     return resultHeap;
 }
-
 
 /*
 Algorithm 5
@@ -372,43 +379,45 @@ Output: K nearest elements to q
 7 W ← SEARCH-LAYER(q, ep, ef, lc =0)
 8 return K nearest elements from W to q
 */
-Heap* K_NN_SEARCH(Graph* g, vec q,int32 K,int32 efsearch){
+Heap *K_NN_SEARCH(Graph *g, vec q, int32 K, int32 efsearch)
+{
 
-    Heap* W;
-    hnswNode* entryPoint = getNodeById(g,g->entrypointID);
+    hnswNode *entryPoint = getNodeById(g, g->entrypointID);
+    sortedBuffer *buffer;
 
-    for(int32 i = g->maxLayer - 1; i >= 0; i--){
-        W = SEARCH_LAYER(g,entryPoint,q,1,i);
-       
-        entryPoint = getNodeById( g, heapPeek(W).id);
+    for (int32 layer = g->maxLayer - 1; layer > 0; layer--)
+    {
+        buffer = SEARCH_LAYER(g, entryPoint, q, 1, layer);
+
+        entryPoint = getNodeById(g, buffer->data[0].id);
     }
 
-    W = SEARCH_LAYER(g,entryPoint,q,efsearch,0);
-    W = SELECT_NEIGBOURS_SIMPLE(W,K);
+    buffer = SEARCH_LAYER(g, entryPoint, q, efsearch, 0);
 
-    // explicitly trim bc i get bugs when i use optimizations
-    
-    return W ;
+    Heap *nearestHeap = SELECT_NEIGBOURS_SIMPLE(g, buffer, K);
+
+    return nearestHeap;
 }
 
+vec NN_SIMPLE_LINEAR(Graph *g, vec q)
+{
 
-vec NN_SIMPLE_LINEAR(Graph* g, vec q){
+    int id = 0;
+    float32 bestdist = LDBL_MAX;
 
-int id = 0;
-long double bestdist = LDBL_MAX;
+    for (int i = 0; i < g->count; i++)
+    {
 
-for(int i = 0; i < g->count; i++){
+        hnswNode *current = &g->nodes[i];
 
-    hnswNode* current = &g->nodes[i];
-    
-    long double currDist = l2_sq_distance(&q, &current->v);
+        float32 currDist = l2_sq_distance_neon_128v(&q, &current->v);
 
-    if(currDist < bestdist){
-        bestdist = currDist;
-        id = current->id;
+        if (currDist < bestdist)
+        {
+            bestdist = currDist;
+            id = current->id;
+        }
     }
-}
 
-return getNodeById(g,id)->v;
-
+    return getNodeById(g, id)->v;
 }

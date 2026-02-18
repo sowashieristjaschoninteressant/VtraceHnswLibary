@@ -3,11 +3,13 @@
 
 #include "vtraceCommon.h"
 
-
-
 #define KB(x) (x << 10)
 #define MB(x) (x << 20)
 #define GB(x) (x << 30)
+
+
+#define DEFAULT_ARRAY_SIZE 16
+#define DEFAULT_CHUNK_SIZE MB(5)
 
 struct arena{
     uint8* base;
@@ -35,16 +37,19 @@ extern void arena_reset(hnswArena* arena);
 extern hnsw_chainAllocator* init_chainArena(uint32 size, uint32 chunkSize);
 extern void chainArena_destroy(hnsw_chainAllocator* chainAllocator); 
 extern void* chainArenaAlloc( hnsw_chainAllocator* chainAllocator ,uint32 size, uint32 alignment);
-
+extern void* chainArena_realloc(hnsw_chainAllocator* chainAllocator);
 static inline uint32 align_up(uint32 value, uint32 alignment) {
     return (value + alignment - 1) & ~(alignment - 1);
 }
 
 
-extern void* hnsw_alloc_mem(size_t size);
+extern void* hnsw_alloc_mem(size_t size, uint32 alignment);
 extern void hnsw_free_mem(void* ptr);
 
 
-
+// global chainAllocator
+extern hnsw_chainAllocator* get_global_chainArena(void);
+extern void* global_chainArena_alloc(uint32 size, uint32 alignment);
+extern void destroy_global_chainArena(void);
 
 #endif
