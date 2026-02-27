@@ -26,7 +26,7 @@ __attribute__((destructor)) static void vtrace_cleanup(void)
  * @param level_mult
  * @return int
  */
-int32 VTlevelSample(uint32 lMax, float32 level_mult)
+inline int32 VTlevelSample(uint32 lMax, float32 level_mult)
 {
 
     float u = (float)rand() / ((float)RAND_MAX + 1.0f);

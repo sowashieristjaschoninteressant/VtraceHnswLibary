@@ -137,7 +137,6 @@ float l2_sq_distance_neon_128_unroll(const vec *__restrict a, const vec *__restr
 
     float32x4_t sum_vec = vdupq_n_f32(0.0f);
 
-    // First 64 floats
     float32x4_t va0 = vld1q_f32(a->vec + 0);
     float32x4_t vb0 = vld1q_f32(b->vec + 0);
     sum_vec = vfmaq_f32(sum_vec, vsubq_f32(va0, vb0), vsubq_f32(va0, vb0));
