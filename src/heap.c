@@ -126,7 +126,7 @@ heapItem heapPop(Heap* heap){
     return root;
 }
 
-heapItem heapPeek(Heap* heap){
+inline heapItem heapPeek(Heap* heap){
    HNSW_ASSERT(heap->size != 0);
     return heap->data[0];
 }

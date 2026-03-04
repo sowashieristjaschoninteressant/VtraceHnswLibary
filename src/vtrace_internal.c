@@ -83,7 +83,7 @@ void INSERT(Graph *graph, vec vec, int32 M, uint32 Mmax, uint32 efConstruction, 
 
     newNode = getNodeById(graph, id);
 
-    makeNode(newNode, vec, id, nodeLevel, graph->M_maxNeigbours);
+    makeNode(newNode, vec, id, nodeLevel, graph->M_maxNeigbours, graph->Mmax0);
 
 #ifdef BILLION_SEARCH_HNSW
     // this is a hot loop so lets just write it like this. this will never happen basically unless you save over 4Billion nodes in this structure but i belive no consumer hardware has even the memory capacity for smth like that
@@ -110,29 +110,53 @@ void INSERT(Graph *graph, vec vec, int32 M, uint32 Mmax, uint32 efConstruction, 
         W = SEARCH_LAYER(graph, ep, vec, 1, j);
         ep = getNodeById(graph, heapPeek(W).id);
     }
+    int32 maxNeigbours = 0;
+    sortedBuffer* pruneBuffer = graph->storage.pruneBuffer;
 
     for (int32 layer = MIN(ep->level, nodeLevel); layer >= 0; layer--)
     {
         sortedBuffer *resultBuffer = SEARCH_LAYER(graph, ep, vec, efConstruction, layer);
 
-
         Heap *selected = SELECT_NEIGBOURS_HEURISTIC(graph, newNode, resultBuffer, layer, M, 0);
+        maxNeigbours = layer == 0 ? graph->Mmax0 : graph->M_maxNeigbours;
 
-        for (uint32 j = 0; j < selected->size; j++)
+        while (selected->size > 0)
         {
 
-            hnswNode *node = getNodeById(graph, selected->data[j].id);
+            hnswNode *node = getNodeById(graph, heapPop(selected).id);
 
-            if (graph->M_maxNeigbours > node->numNeigbours[layer] && graph->M_maxNeigbours > newNode->numNeigbours[layer])
+            if (maxNeigbours > node->numNeigbours[layer] && maxNeigbours > newNode->numNeigbours[layer])
             {
-
-                addNeigbour(node, newNode->id, layer, graph->M_maxNeigbours);
-                addNeigbour(newNode, node->id, layer, graph->M_maxNeigbours);
+                
+                addNeigbour(node, newNode->id, layer, maxNeigbours);
+                addNeigbour(newNode, node->id, layer, maxNeigbours);
             }
-            // TODO: okay i could implement here the algo to restructure the nodes
+            else{
+
+                pruneBuffer->size = node->numNeigbours[layer];
+
+                for(int32 i = 0; i < pruneBuffer->size; i++){
+                    int32 nid = node->neigbours[(layer * maxNeigbours) + i];
+                    hnswNode* neigbor = getNodeById(graph,nid);
+
+                    float32 dist = l2_sq_distance_neon_128_unroll(&node->v, &neigbor->v);
+                    pruneBuffer->data[i].id = nid;
+                    pruneBuffer->data[i].dist = dist;
+                }
+                Heap* pruned = SELECT_NEIGBOURS_HEURISTIC(graph, node, &pruneBuffer, layer, maxNeigbours, 0);
+
+                node->numNeigbours[layer] = 0;
+
+                while(pruned->size > 0 ){
+                    heapItem item = heapPop(pruned);
+                    node->neigbours[(layer * graph->M_maxNeigbours) +
+                    node->numNeigbours[layer]++] = item.id;
+                }
+
+              
+            }
         }
     }
-   
 
     graph->count++;
 
@@ -295,7 +319,7 @@ keepPrunnedConnections
 
 Heap *SELECT_NEIGBOURS_HEURISTIC(Graph *graph, hnswNode *baseElement, sortedBuffer *candidates, int32 lc, int32 M, int8 FLAGS)
 {
-    Heap *resultHeap = graph->storage.resultHeap; // maxheap
+    Heap *resultHeap =graph->storage.resultHeap->size > 0 ? graph->storage.secondResultHeap :  graph->storage.resultHeap; // maxheap
     Heap *discarded = graph->storage.discardedHeap;
 
     heap_reset(resultHeap);
@@ -364,21 +388,6 @@ Heap *SELECT_NEIGBOURS_HEURISTIC(Graph *graph, hnswNode *baseElement, sortedBuff
     return resultHeap;
 }
 
-/*
-Algorithm 5
-K-NN-SEARCH(hnsw, q, K, ef)
-Input: multilayer graph hnsw, query element q, number of nearest
-neighbors to return K, size of the dynamic candidate list ef
-Output: K nearest elements to q
-1 W ← ∅ // set for the current nearest elements
-2 ep ← get enter point for hnsw
-3 L ← level of ep // top layer for hnsw
-4 for lc ← L … 1
-5 W ← SEARCH-LAYER(q, ep, ef=1, lc)
-6 ep ← get nearest element from W to q
-7 W ← SEARCH-LAYER(q, ep, ef, lc =0)
-8 return K nearest elements from W to q
-*/
 Heap *K_NN_SEARCH(Graph *g, vec q, int32 K, int32 efsearch)
 {
 

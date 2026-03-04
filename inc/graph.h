@@ -10,8 +10,8 @@
 
 
 struct graph_internal_Storage{
-   Heap* candidateHeap,*discardedHeap,*resultHeap, *closestResults, *simpleHeap;
-   sortedBuffer* buffer;
+   Heap* candidateHeap,*discardedHeap,*secondResultHeap,*resultHeap, *closestResults, *simpleHeap;
+   sortedBuffer* buffer,*pruneBuffer;
 };
 
 typedef struct graph_internal_Storage graphInternalStorage;
@@ -40,12 +40,13 @@ visitedList initvList(uint32 size);
  struct Graph {
 
   // hyperparameters
-  uint32 efsearch;
-  uint32 efconstruction;
-  uint32 M_maxNeigbours;
-  uint32 maxLayer;
-  uint64 count;
-  uint64 maxNodeCount;
+  int32 efsearch;
+  int32 efconstruction;
+  int32 M_maxNeigbours;
+  int32 Mmax0;
+  int32 maxLayer;
+  int64 count;
+  int64 maxNodeCount;
 
 
   int64 entrypointID;
@@ -60,7 +61,7 @@ visitedList initvList(uint32 size);
 typedef struct Graph Graph;
 
 typedef Graph VT_graph;
-extern void makeNode(node* node, vec v,uint32 id, uint32 nodeLevel, uint32 maxNeigbours);
+extern void makeNode(node *node, vec v, uint32 id, uint32 nodeLevel, uint32 maxNeigbours, int32 mMax0);
 extern VT_graph *initializeGraph(uint32 maxLayer, uint32 efConstruction, uint32 efSearch, uint32 M_maxNeigbours, uint32 maxNodeCount);
 extern void uninitializeGraph(VT_graph* graph);
 extern void addNeigbour(node* target, uint32 neighbourId, uint32 layer, uint32 M_MAXneigbours);

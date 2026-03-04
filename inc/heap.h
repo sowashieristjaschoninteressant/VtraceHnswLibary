@@ -32,6 +32,8 @@ struct sortedBuffer{
 
 typedef struct sortedBuffer sortedBuffer;
 
+extern void initSortedBuffer(size_t size, sortedBuffer* buffer);
+
 // UTILS
 extern int32 min_cmp( const heapItem* a, const heapItem* b);
 extern int32 max_cmp( const heapItem* a, const heapItem* b);
@@ -47,7 +49,7 @@ extern Heap* heap_init(uint32 capacity, cmp cmpFunc);
 extern void heap_dispose(Heap* heap);
 extern void heap_insert(Heap* heap, uint32 id, float32 dist, void* data);
 extern heapItem heapPop(Heap* heap);
-extern heapItem heapPeek(Heap* heap);
+extern inline heapItem heapPeek(Heap* heap);
 extern void heap_reset(Heap* heap);
 extern void debugPrintHeap(Heap* heap);
 extern void heapify(Heap* heap);
