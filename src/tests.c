@@ -595,10 +595,11 @@ void test_insert_first_node()
 }
 
 void test_bidirectionalLinks()
-{
-    Graph *graph = make_simpleTestGraph(50);
+{   
+    int32 size = 100000;
+    Graph *graph = make_simpleTestGraph(size);
     uint32 dim = 4;
-    vec vecs[50];
+    vec* vecs = malloc(sizeof(vec) * size);
 
     // seed the random algorithm to smth more deterministic
 
@@ -606,7 +607,7 @@ void test_bidirectionalLinks()
     // arange
     float32 ml = 1 / log(graph->M_maxNeigbours);
 
-    for (uint32 j = 0; j < 50; j++)
+    for (uint32 j = 0; j < size; j++)
     {
         vecs[j].vec = generateRandVec(dim, 0, 100000);
         vecs[j].dim = dim;

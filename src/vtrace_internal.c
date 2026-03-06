@@ -51,7 +51,7 @@ inline int32 VTlevelSample(uint32 lMax, float32 level_mult)
         int32 nid = node->neigbours[off + i];
         hnswNode *n = getNodeById(g, nid);
         buf->data[i].id = nid;
-        buf->data[i].dist = l2_sq_distance_neon_128_unroll(&node->v, &n->v);
+        buf->data[i].dist = l2_sq_distance_neon_128v(&node->v, &n->v);
     }
 
     Heap *selected = SELECT_NEIGBOURS_HEURISTIC(g, node, buf, layer, max, 0);
@@ -124,12 +124,14 @@ inline int32 VTlevelSample(uint32 lMax, float32 level_mult)
     }
 
     if (a->numNeigbours[layer] > maxNeigbours)
-    {
+    {   
+      
        prune_neighbours(g, a, layer, maxNeigbours);
     }
 
     if (b->numNeigbours[layer] > maxNeigbours)
     {
+       
         prune_neighbours(g, b, layer, maxNeigbours);
     }
 }
@@ -182,14 +184,13 @@ void INSERT(Graph *graph, vec vec, int32 M, uint32 Mmax, uint32 efConstruction, 
 
         Heap *selected = SELECT_NEIGBOURS_HEURISTIC(graph, newNode, resultBuffer, layer, M, 0);
         
-       
-
         while (selected->size > 0)
         {
 
             hnswNode *node = getNodeById(graph, heapPop(selected).id);
 
             if(layer <= newNode->level && layer <= node->level){
+                
                  connect_bidirectional(graph,newNode,node,layer);
             }
            
