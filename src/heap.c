@@ -88,6 +88,11 @@ void heap_dispose(Heap* heap){
     hnsw_free_mem(heap);
 }
 
+void initSortedBuffer(size_t size, sortedBuffer* buffer){
+    buffer->size = 0;
+    buffer->data = hnsw_alloc_mem(size * sizeof(heapItem), alignof(heapItem));
+}
+
 void heap_insert(Heap* heap, uint32 id, float32 dist, void* data){
    if(heap->size >= heap->capacity){
         // increase capacity

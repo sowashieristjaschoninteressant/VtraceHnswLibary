@@ -11,7 +11,7 @@
 
 struct graph_internal_Storage{
    Heap* candidateHeap,*discardedHeap,*secondResultHeap,*resultHeap, *closestResults, *simpleHeap;
-   sortedBuffer* buffer,*pruneBuffer;
+   sortedBuffer* buffer,*pruneBuffer,*oldCandidatesBuf;
 };
 
 typedef struct graph_internal_Storage graphInternalStorage;
@@ -67,6 +67,28 @@ extern void uninitializeGraph(VT_graph* graph);
 extern void addNeigbour(node* target, uint32 neighbourId, uint32 layer, uint32 M_MAXneigbours);
 extern void expandgraph(Graph* graph);
 void initStorage(Graph* graph);
+
+
+HNSW_INLINE uint32 layer_offset(Graph* g, uint32 layer){
+    if(!layer){
+        return 0;
+    }
+
+    return (g->Mmax0) + (layer-1) * g->M_maxNeigbours;
+}
+
+HNSW_INLINE int hasNeigbour(hnswNode* node, int32 id, int32 layer, int32 off){
+
+    for(int32 i = 0; i < node->numNeigbours[layer]; i++){
+
+        if(node->neigbours[off +i] == id){
+          return 1;
+        }
+    }
+    return 0;
+
+}
+
 HNSW_INLINE node* getNodeById(Graph* g, uint32 id){
   return &g->nodes[id];
 }

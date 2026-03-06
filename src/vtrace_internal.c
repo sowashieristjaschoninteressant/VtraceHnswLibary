@@ -5,8 +5,7 @@ __attribute__((constructor)) static void vtrace_init(void)
 {
     printf("okay constructor gets called!\n");
     // instaniate
-   
-    
+
     GRAPH_TESTS();
     HEAP_TESTS();
     ARENA_TESTS();
@@ -38,36 +37,102 @@ inline int32 VTlevelSample(uint32 lMax, float32 level_mult)
     return level > lMax ? lMax : level;
 }
 
-/*
-Algorithm 1
-INSERT(hnsw, q, M, Mmax, efConstruction, mL)
-Input: multilayer graph hnsw, new element q, number of established
-connections M, maximum number of connections for each element
-per layer Mmax, size of the dynamic candidate list efConstruction, nor-
-malization factor for level generation mL
-Output: update hnsw inserting element q
-1 W ← ∅ // list for the currently found nearest elements
-2 ep ← get enter point for hnsw
-3 L ← level of ep // top layer for hnsw
-4 l ← ⌊-ln(unif(0..1))∙mL⌋ // new element’s level
-5 for lc ← L … l+1
-6 W ← SEARCH-LAYER(q, ep, ef=1, lc)
-7 ep ← get the nearest element from W to q
-8 for lc ← min(L, l) … 0
-9 W ← SEARCH-LAYER(q, ep, efConstruction, lc)
-10 neighbors ← SELECT-NEIGHBORS(q, W, M, lc) // alg. 3 or alg. 4
-11 add bidirectionall connectionts from neighbors to q at layer lc
-12 for each e ∈ neighbors // shrink connections if needed
-13 eConn ← neighbourhood(e) at layer lc
-14 if │eConn│ > Mmax // shrink connections of e
-// if lc = 0 then Mmax = Mmax0
-15 eNewConn ← SELECT-NEIGHBORS(e, eConn, Mmax, lc)
-// alg. 3 or alg. 4
-16 set neighbourhood(e) at layer lc to eNewConn
-17 ep ← W
-18 if l > L
-19 set enter point for hnsw to q
- */
+ void prune_neighbours(Graph *g, hnswNode *node, int32 layer, int32 max)
+{
+    int32 off = layer_offset(g, layer);
+    sortedBuffer *buf = g->storage.pruneBuffer;
+    sortedBuffer *newSet = g->storage.oldCandidatesBuf;
+    newSet->size = 0;
+
+    int32 oldCount = node->numNeigbours[layer];
+
+    buf->size = oldCount;
+    for (int32 i = 0; i < oldCount; i++) {
+        int32 nid = node->neigbours[off + i];
+        hnswNode *n = getNodeById(g, nid);
+        buf->data[i].id = nid;
+        buf->data[i].dist = l2_sq_distance_neon_128_unroll(&node->v, &n->v);
+    }
+
+    Heap *selected = SELECT_NEIGBOURS_HEURISTIC(g, node, buf, layer, max, 0);
+
+    node->numNeigbours[layer] = 0;
+
+    while (selected->size) {
+        heapItem it = heapPop(selected);
+        node->neigbours[off + node->numNeigbours[layer]++] = it.id;
+        newSet->data[newSet->size++].id = it.id;
+    }
+
+    
+    for (int32 i = 0; i < oldCount; i++) {
+        int32 oldID = buf->data[i].id;
+        int survived = 0;
+        for (int32 j = 0; j < newSet->size; j++) {
+            if (newSet->data[j].id == oldID) { survived = 1; break; }
+        }
+        if (!survived) {
+            hnswNode *other = getNodeById(g, oldID);
+            int32 off2 = layer_offset(g, layer);
+            for (int32 k = 0; k < other->numNeigbours[layer]; k++) {
+                if (other->neigbours[off2 + k] == node->id) {
+                    other->neigbours[off2 + k] = other->neigbours[off2 + (--other->numNeigbours[layer])];
+                    break;
+                }
+            }
+        }
+    }
+
+    for (int32 i = 0; i < newSet->size; i++) {
+        hnswNode *survived = getNodeById(g, newSet->data[i].id);
+        int32 off2 = layer_offset(g, layer);
+
+        int alreadyLinked = 0;
+        for (int32 j = 0; j < survived->numNeigbours[layer]; j++) {
+            if (survived->neigbours[off2 + j] == node->id) {
+                alreadyLinked = 1;
+                break;
+            }
+        }
+
+        if (!alreadyLinked) {
+            if (survived->numNeigbours[layer] < max) {
+                survived->neigbours[off2 + survived->numNeigbours[layer]++] = node->id;
+            } else if (layer == 0) {
+                // optionally prune layer 0 neighbor to make room
+                prune_neighbours(g, survived, layer, max);
+                survived->neigbours[off2 + survived->numNeigbours[layer]++] = node->id;
+            }
+        }
+    }
+}
+
+ void connect_bidirectional(Graph *g, hnswNode *a, hnswNode *b, int32 layer)
+{
+    int32 maxNeigbours = layer == 0 ? g->Mmax0 : g->M_maxNeigbours;
+
+    int32 off = layer_offset(g, layer);
+
+    if (!hasNeigbour(a, b->id, layer, off))
+    {
+        a->neigbours[off + a->numNeigbours[layer]++] = b->id;
+    }
+
+    if (!hasNeigbour(b, a->id, layer, off))
+    {
+        b->neigbours[off + b->numNeigbours[layer]++] = a->id;
+    }
+
+    if (a->numNeigbours[layer] > maxNeigbours)
+    {
+       prune_neighbours(g, a, layer, maxNeigbours);
+    }
+
+    if (b->numNeigbours[layer] > maxNeigbours)
+    {
+        prune_neighbours(g, b, layer, maxNeigbours);
+    }
+}
 void INSERT(Graph *graph, vec vec, int32 M, uint32 Mmax, uint32 efConstruction, uint32 ml)
 {
 
@@ -110,51 +175,24 @@ void INSERT(Graph *graph, vec vec, int32 M, uint32 Mmax, uint32 efConstruction, 
         W = SEARCH_LAYER(graph, ep, vec, 1, j);
         ep = getNodeById(graph, heapPeek(W).id);
     }
-    int32 maxNeigbours = 0;
-    sortedBuffer* pruneBuffer = graph->storage.pruneBuffer;
-
+  
     for (int32 layer = MIN(ep->level, nodeLevel); layer >= 0; layer--)
     {
         sortedBuffer *resultBuffer = SEARCH_LAYER(graph, ep, vec, efConstruction, layer);
 
         Heap *selected = SELECT_NEIGBOURS_HEURISTIC(graph, newNode, resultBuffer, layer, M, 0);
-        maxNeigbours = layer == 0 ? graph->Mmax0 : graph->M_maxNeigbours;
+        
+       
 
         while (selected->size > 0)
         {
 
             hnswNode *node = getNodeById(graph, heapPop(selected).id);
 
-            if (maxNeigbours > node->numNeigbours[layer] && maxNeigbours > newNode->numNeigbours[layer])
-            {
-                
-                addNeigbour(node, newNode->id, layer, maxNeigbours);
-                addNeigbour(newNode, node->id, layer, maxNeigbours);
+            if(layer <= newNode->level && layer <= node->level){
+                 connect_bidirectional(graph,newNode,node,layer);
             }
-            else{
-
-                pruneBuffer->size = node->numNeigbours[layer];
-
-                for(int32 i = 0; i < pruneBuffer->size; i++){
-                    int32 nid = node->neigbours[(layer * maxNeigbours) + i];
-                    hnswNode* neigbor = getNodeById(graph,nid);
-
-                    float32 dist = l2_sq_distance_neon_128_unroll(&node->v, &neigbor->v);
-                    pruneBuffer->data[i].id = nid;
-                    pruneBuffer->data[i].dist = dist;
-                }
-                Heap* pruned = SELECT_NEIGBOURS_HEURISTIC(graph, node, &pruneBuffer, layer, maxNeigbours, 0);
-
-                node->numNeigbours[layer] = 0;
-
-                while(pruned->size > 0 ){
-                    heapItem item = heapPop(pruned);
-                    node->neigbours[(layer * graph->M_maxNeigbours) +
-                    node->numNeigbours[layer]++] = item.id;
-                }
-
-              
-            }
+           
         }
     }
 
@@ -319,7 +357,7 @@ keepPrunnedConnections
 
 Heap *SELECT_NEIGBOURS_HEURISTIC(Graph *graph, hnswNode *baseElement, sortedBuffer *candidates, int32 lc, int32 M, int8 FLAGS)
 {
-    Heap *resultHeap =graph->storage.resultHeap->size > 0 ? graph->storage.secondResultHeap :  graph->storage.resultHeap; // maxheap
+    Heap *resultHeap = graph->storage.resultHeap->size > 0 ? graph->storage.secondResultHeap : graph->storage.resultHeap; // maxheap
     Heap *discarded = graph->storage.discardedHeap;
 
     heap_reset(resultHeap);

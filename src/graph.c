@@ -1,10 +1,10 @@
 
 #include "graph.h"
 
-VT_graph *initializeGraph(uint32 maxLayer, uint32 efConstruction, uint32 efSearch, uint32 M_maxNeigbours, uint32 maxNodeCount)
+Graph *initializeGraph(uint32 maxLayer, uint32 efConstruction, uint32 efSearch, uint32 M_maxNeigbours, uint32 maxNodeCount)
 {
-
-    VT_graph *graph = hnsw_alloc_mem(sizeof(VT_graph), alignof(VT_graph));
+    
+    Graph *graph = malloc(sizeof(VT_graph));
 
     HNSW_ASSERT(graph);
 
@@ -45,6 +45,7 @@ VT_graph *initializeGraph(uint32 maxLayer, uint32 efConstruction, uint32 efSearc
 
 void initStorage(Graph *graph)
 {
+    uint32 maxPruneBufferSize = graph->Mmax0 * 2;
 
     graph->storage.candidateHeap = MIN_HEAP(graph->efconstruction);
     graph->storage.closestResults = MAX_HEAP(graph->efconstruction);
@@ -54,10 +55,10 @@ void initStorage(Graph *graph)
     graph->storage.secondResultHeap = MAX_HEAP(graph->efconstruction);
     
     graph->storage.pruneBuffer = hnsw_alloc_mem(sizeof(sortedBuffer), alignof(sortedBuffer));
+    graph->storage.oldCandidatesBuf = hnsw_alloc_mem(sizeof(sortedBuffer), alignof(sortedBuffer));
 
-    graph->storage.pruneBuffer->data = hnsw_alloc_mem(sizeof(heapItem) * (graph->Mmax0), alignof(heapItem));
-    HNSW_ASSERT(graph->storage.pruneBuffer->data);
-    graph->storage.pruneBuffer->size = 0;
+    initSortedBuffer(maxPruneBufferSize, graph->storage.pruneBuffer);
+    initSortedBuffer(maxPruneBufferSize,graph->storage.oldCandidatesBuf);
 
     graph->storage.buffer = hnsw_alloc_mem(sizeof(sortedBuffer), alignof(sortedBuffer));
     if (!graph->storage.buffer)
@@ -73,7 +74,7 @@ void initStorage(Graph *graph)
 void makeNode(node *node, vec v, uint32 id, uint32 nodeLevel, uint32 maxNeigbours, int32 mMax0)
 {
     // because layer 1 will be saved in array slot 0 but when i pass 0 into the allocation func it will abort
-    uint32 allocationLevel = nodeLevel + 1;
+  
 
     node->id = id;
     node->level = nodeLevel;
@@ -82,12 +83,19 @@ void makeNode(node *node, vec v, uint32 id, uint32 nodeLevel, uint32 maxNeigbour
     node->v.vec = hnsw_alloc_mem(sizeof(float32) * v.dim, alignof(float32));
     memcpy(node->v.vec, v.vec, sizeof(float32) * v.dim);
 
-    node->neigbours = hnsw_alloc_mem(sizeof(uint32) * ((mMax0 + maxNeigbours) * allocationLevel), alignof(uint32));
+   
+   uint32 allocationLevel = nodeLevel + 1;
+   uint32 capLayer0 = mMax0 + 1;         // layer0 overprovision +1
+   uint32 capUpper  = maxNeigbours + 1;  // layer>0 overprovision +1
 
-    node->numNeigbours = hnsw_alloc_mem(sizeof(uint32) * allocationLevel, alignof(uint32));
+   uint32 totalSlots = capLayer0 + capUpper * nodeLevel;
 
-    memset(node->numNeigbours, 0, sizeof(uint32) * allocationLevel);
+   node->neigbours = hnsw_alloc_mem(sizeof(uint32) * totalSlots, alignof(uint32));
+   node->numNeigbours = hnsw_alloc_mem(sizeof(uint32) * allocationLevel, alignof(uint32));
+   memset(node->numNeigbours, 0, sizeof(uint32) * allocationLevel);
 }
+
+
 
 void expandgraph(Graph *graph)
 {
@@ -133,17 +141,13 @@ visitedList initvList(uint32 size)
 void uninitializeGraph(VT_graph *graph)
 {
 
-    free(graph->visited.visited);
+    
     free(graph);
 }
 
-inline void addNeigbour(node *target, uint32 neighbourId, uint32 layer, uint32 M_MAXneigbours)
+inline void addNeigbour(node *target, uint32 neighbourId, uint32 layer, uint32 offset)
 {
-    if (M_MAXneigbours <= target->numNeigbours[layer])
-    {
-        HNSW_LOG("VTaddNeigbour to many neighbours in layer...");
-        return;
-    }
 
-    target->neigbours[layer * M_MAXneigbours + target->numNeigbours[layer]++] = neighbourId;
+   
+    target->neigbours[ offset + target->numNeigbours[layer]++] = neighbourId;
 }
