@@ -9,12 +9,6 @@
 #define DEFAULT_MAX_NEIGBOURS 64
 
 
-struct graph_internal_Storage{
-   Heap* candidateHeap,*discardedHeap,*secondResultHeap,*resultHeap, *closestResults, *simpleHeap;
-   sortedBuffer* buffer,*pruneBuffer,*oldCandidatesBuf;
-};
-
-typedef struct graph_internal_Storage graphInternalStorage;
 
 typedef struct {
   uint64 id;
@@ -34,11 +28,42 @@ struct hnsw_visitedList{
 };
 
 typedef struct hnsw_visitedList visitedList;
+typedef struct hnswContext hnswContext;
+typedef struct Graph Graph;
+typedef struct hnswContextPool hnswContextPool;
 
 visitedList initvList(uint32 size);
 
- struct Graph {
+struct hnswContext{
+  Graph* g;
+  Heap* candidateHeap;
+  Heap* resultHeap;
+  Heap* secondResultHeap;
+  Heap* discardHeap;
+  Heap* outHeap;
+  
 
+  sortedBuffer* buffer;
+  sortedBuffer* tempbuf;
+  sortedBuffer* pruneBuffer;
+  uint32 visited_mark;
+};
+
+/**
+ * A context is NEVER used by more than one operation at a time
+  A context is ALWAYS reset before reuse
+  A context is ALWAYS released after use
+ * 
+ */
+struct hnswContextPool{
+  hnswContext* pool;
+  int32 size;
+  int32 capacity;
+  int8* inUse;
+};
+
+
+struct Graph {
   // hyperparameters
   int32 efsearch;
   int32 efconstruction;
@@ -47,18 +72,22 @@ visitedList initvList(uint32 size);
   int32 maxLayer;
   int64 count;
   int64 maxNodeCount;
-
+  int64 maxHeapSize;
 
   int64 entrypointID;
   visitedList visited;
   node* nodes;
-  graphInternalStorage storage;
-
-  
+  hnswContextPool pool;
 };
 
 
-typedef struct Graph Graph;
+
+
+extern hnswContext* createHnswContext(Graph* g);
+extern hnswContext* destroyHnswContext(hnswContext* ctx);
+extern hnswContext* acquireContext(Graph* g);
+extern void releaseContext(Graph* g, hnswContext* ctx);
+extern void initContextPool(Graph* g, int32 capacity);
 
 typedef Graph VT_graph;
 extern void makeNode(node *node, vec v, uint32 id, uint32 nodeLevel, uint32 maxNeigbours, int32 mMax0);
@@ -66,7 +95,22 @@ extern VT_graph *initializeGraph(uint32 maxLayer, uint32 efConstruction, uint32 
 extern void uninitializeGraph(VT_graph* graph);
 extern void addNeigbour(node* target, uint32 neighbourId, uint32 layer, uint32 M_MAXneigbours);
 extern void expandgraph(Graph* graph);
-void initStorage(Graph* graph);
+
+
+HNSW_INLINE void resetContext(hnswContext* ctx){
+    
+    heap_reset(ctx->resultHeap);
+    heap_reset(ctx->candidateHeap);
+    heap_reset(ctx->secondResultHeap);
+    heap_reset(ctx->discardHeap);
+ 
+
+    if (ctx->buffer) ctx->buffer->size = 0;
+    if (ctx->tempbuf) ctx->tempbuf->size = 0;
+    if (ctx->pruneBuffer) ctx->pruneBuffer->size = 0;
+
+    ctx->visited_mark++;   // IMPORTANT (see below)
+}
 
 
 HNSW_INLINE uint32 layer_offset(Graph* g, uint32 layer){
@@ -98,7 +142,7 @@ HNSW_INLINE void incVisitedMark(Graph* g){
     
 }
 HNSW_INLINE void markNodeVisited(Graph* g, uint64 id){
-      if(!g->visited.visited || id > g->visited.size){
+      if(!g->visited.visited || id >= g->visited.size){
           printf("id index: %lu\n", id);
           HNSW_LOG("visit list needs to grow");
           abort();

@@ -34,21 +34,26 @@ void hnsw_insert(HNSW* graph, vec* vector, int32 M){
 
 
 int hnsw_search(HNSW* graph, vec* query, int32 k, hnswResult* results){
+   
+    hnswContext* ctx = acquireContext(graph);
+    Heap* out = ctx->outHeap;
+    heap_reset(out);
 
-   Heap* resultH =  K_NN_SEARCH(graph, *query,k,graph->efsearch);
+   K_NN_SEARCH(ctx, *query,k,graph->efsearch, out);
   
-   int32 heapSize = resultH->size;
+   int32 heapSize = out->size;
    int32 outSize = heapSize < k ? heapSize : k; 
    
    if(populateresultSet(results, outSize) != HNSW_OK) return HNSW_ERROR;
    
    
    for(int32 i = 0; i < outSize; i++){
-        heapItem item = heapPop(resultH);
+        heapItem item = heapPop(out);
         results->ids[i] = item.id;
         results->distances[i] = item.dist;
    }
    
+    releaseContext(graph, ctx);
     return HNSW_OK;
 }
 

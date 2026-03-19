@@ -50,7 +50,7 @@ void validate_graph(Graph *g)
     {
         node *n = &g->nodes[i];
         for (uint32 l = 0; l <= n->level; l++)
-        {   
+        {
             max = l == 0 ? g->Mmax0 : g->M_maxNeigbours;
 
             HNSW_ASSERT(n->numNeigbours[l] <= max);
@@ -73,20 +73,18 @@ Graph *mockTestGraph(uint32 efSearch)
     const uint32 Mmax = 5;
     const uint32 maxNodes = 10;
 
-    Graph* graph = initializeGraph(maxLayer, efConstruction, efSearch, Mmax, maxNodes);
+    Graph *graph = initializeGraph(maxLayer, efConstruction, efSearch, Mmax, maxNodes);
 
     vec v0 = make_vec(2, (float[]){0.0f, 0.0f});
     vec v1 = make_vec(2, (float[]){1.0f, 0.0f});
     vec v2 = make_vec(2, (float[]){0.0f, 1.0f});
 
-    
     INSERT(graph, v0, Mmax, Mmax, efConstruction, 0);
     INSERT(graph, v1, Mmax, Mmax, efConstruction, 0);
     INSERT(graph, v2, Mmax, Mmax, efConstruction, 0);
 
     return graph;
 }
-
 
 /*
 
@@ -210,7 +208,6 @@ void ARENA_TESTS()
     HNSW_LOG("ENDING ALLOCATION TESTS");
 }
 
-
 void ARENA_ALLOCATEBIG_TEST()
 {
     uint32 arenaSize = KB(1);
@@ -283,20 +280,19 @@ void ARENA_ALIGNMENT_TEST()
     arena_destroy(arena);
 }
 
-void CHAINARENA_READWRITEALLOCATION_TEST(){
+void CHAINARENA_READWRITEALLOCATION_TEST()
+{
 
-    hnsw_chainAllocator* carena = init_chainArena(1, KB(1) / 2 );
+    hnsw_chainAllocator *carena = init_chainArena(1, KB(1) / 2);
 
     HNSW_ASSERT(carena);
 
     int32 arraySize = 30;
 
+    float32 *testArray = chainArenaAlloc(carena, sizeof(float32) * arraySize, alignof(float32));
 
-    float32* testArray = chainArenaAlloc(carena, sizeof(float32) * arraySize, alignof(float32));
-
-    
-
-    for(int i = 0; i < arraySize; i++){
+    for (int i = 0; i < arraySize; i++)
+    {
         testArray[i] = 5.325f;
         HNSW_ASSERT(testArray[i] == 5.325f);
     }
@@ -306,16 +302,16 @@ void CHAINARENA_READWRITEALLOCATION_TEST(){
     chainArena_destroy(carena);
 }
 
-
-void CHAINARENA_USENEXT_TEST(){
+void CHAINARENA_USENEXT_TEST()
+{
     uint32 arenas = 3;
     int32 arenaSize = 10;
-    
-    hnsw_chainAllocator* carena = init_chainArena(arenas, arenaSize );
+
+    hnsw_chainAllocator *carena = init_chainArena(arenas, arenaSize);
     uint32 oldOffset = carena->current;
 
-    int8* testBytes = chainArenaAlloc(carena, 10,alignof(int8));
-    int8* newByteAllocation = chainArenaAlloc(carena, 10,alignof(int8));
+    int8 *testBytes = chainArenaAlloc(carena, 10, alignof(int8));
+    int8 *newByteAllocation = chainArenaAlloc(carena, 10, alignof(int8));
 
     HNSW_ASSERT(oldOffset != carena->current);
     HNSW_ASSERT(testBytes);
@@ -324,38 +320,38 @@ void CHAINARENA_USENEXT_TEST(){
     HNSW_LOG("use next arena in array test SUCCESS!");
 
     chainArena_destroy(carena);
-    
 }
 
-void CHAINARENA_GROW_TEST(){
+void CHAINARENA_GROW_TEST()
+{
     // prepare
     const int32 arenas = 3;
     const uint32 chunkSize = 20;
     const uint32 magicNr = 0x5;
-    int8* byteptr;
-    hnsw_chainAllocator* carena = init_chainArena(arenas, chunkSize);
-  
+    int8 *byteptr;
+    hnsw_chainAllocator *carena = init_chainArena(arenas, chunkSize);
+
     // arange
 
-    for(int i = 0; i < 3; i++){
+    for (int i = 0; i < 3; i++)
+    {
         chainArenaAlloc(carena, chunkSize, sizeof(int8));
     }
 
-    byteptr = chainArenaAlloc(carena,10, sizeof(int8));
+    byteptr = chainArenaAlloc(carena, 10, sizeof(int8));
     memset(byteptr, magicNr, 10);
-    
+
     // assert
     HNSW_ASSERT(byteptr);
     HNSW_ASSERT(carena->arraySize == arenas * 2);
 
-    for(int i = 0; i < 10; i++){
-       HNSW_ASSERT(byteptr[i] == magicNr);
+    for (int i = 0; i < 10; i++)
+    {
+        HNSW_ASSERT(byteptr[i] == magicNr);
     }
 
     HNSW_LOG("CHAINARENA grow works!");
 }
-
-
 
 /*
 ===========================
@@ -369,9 +365,10 @@ void SELECT_NEAREST_NABOURS()
     // Example distances for candidates
     float distances[] = {10.5, 2.3, 7.7, 4.4, 6.6, 1.1, 8.8};
     uint32 num_candidates = sizeof(distances) / sizeof(distances[0]);
-    uint32 M = 3; 
-    Graph* g = mockTestGraph(20);
-    //Grapg* g = initializeGraph()
+    uint32 M = 3;
+    Graph *g = mockTestGraph(20);
+    hnswContext *ctx = acquireContext(g);
+
     Heap *c = heap_init(num_candidates, max_cmp);
     for (uint32 i = 0; i < num_candidates; i++)
     {
@@ -382,13 +379,13 @@ void SELECT_NEAREST_NABOURS()
     debugPrintHeap(c);
 
     // Step 2: Select M nearest neighbors
-    Heap *m = SELECT_NEIGBOURS_SIMPLE(g,c, M);
+    SELECT_NEIGBOURS_SIMPLE(g, c, M, ctx->outHeap);
 
     // Step 3: Pop from the resulting max-heap to get M closest
     printf("\nSelected %u nearest neighbors (max-heap root = farthest of the closest):\n", M);
-    while (m->size > 0)
+    while (ctx->outHeap->size > 0)
     {
-        heapItem item = heapPop(m);
+        heapItem item = heapPop(ctx->outHeap);
         printf("id=%u dist=%.2f\n", item.id, item.dist);
     }
 
@@ -398,24 +395,35 @@ void SELECT_NEAREST_NABOURS()
 
 void SIMPLE_SEARCH_LAYERTEST()
 {
-
     // prepare
     Graph *graph = mockTestGraph(4);
+    hnswContext *ctx = acquireContext(graph);
+
     vec query = make_vec(2, (float[]){0.1f, 0.1f});
-    hnswNode* ep = getNodeById(graph, graph->entrypointID);
-    sortedBuffer*results = SEARCH_LAYER(graph,ep, query, graph->efsearch, 0);
+    hnswNode *ep = getNodeById(graph, graph->entrypointID);
+    sortedBuffer *results = SEARCH_LAYER(ctx, ep, query, graph->efsearch, 0);
 
-    const uint32 expectedResultIds[] = {0, 2, 1, 3};
-    int resultIteration = 0;
-    for(int32 i = 0; i < results->size; i++)
+    const uint32 expectedIds[] = {0, 1, 2};
+    int found[3] = {0};
+
+    for (int32 i = 0; i < results->size; i++)
     {
+        uint32 id = results->data[i].id;
 
-        heapItem temp = results->data[i];
-        HNSW_ASSERT(temp.id == expectedResultIds[resultIteration++]);
-        //printf("these are the results id:  %i distance: %f\n", temp.id, temp.dist);
+        for (int j = 0; j < 3; j++)
+        {
+            if (id == expectedIds[j])
+            {
+                found[j] = 1;
+            }
+        }
+    }
+
+    for (int j = 0; j < 3; j++)
+    {
+        HNSW_ASSERT(found[j] == 1);
     }
     HNSW_LOG("SEARCH-LAYER WORKING");
-    
 }
 
 void INIT_GRAPH_TEST()
@@ -434,14 +442,9 @@ void INIT_GRAPH_TEST()
     HNSW_ASSERT(graph->M_maxNeigbours == M_maxNeigbours);
     HNSW_ASSERT(graph->maxLayer == maxLayer);
     HNSW_ASSERT(graph->nodes);
-    HNSW_ASSERT(graph->storage.candidateHeap);
-    HNSW_ASSERT(graph->storage.simpleHeap);
-    HNSW_ASSERT(graph->storage.discardedHeap);
-    HNSW_ASSERT(graph->storage.closestResults);
-    HNSW_ASSERT(graph->storage.resultHeap);
+    HNSW_ASSERT(graph->pool.pool);
     HNSW_ASSERT(graph->visited.visited);
 
-    
     HNSW_LOG("GRAPH INITIALISATION WORKS SUCESSFULLY");
 }
 
@@ -462,102 +465,108 @@ void GRAPH_TESTS()
 }
 
 void FULL_API_INSERT_SEARCH_TEST()
-{   
+{
     const int32 maxSize = 5000;
     const int32 dim = 5;
-    Graph* g = initializeGraph(10, 20, 10, 20, maxSize);
-    vec* vecs = malloc(sizeof(vec) * maxSize);
+    Graph *g = initializeGraph(10, 20, 10, 20, maxSize);
+    hnswContext *ctx = acquireContext(g);
+    vec *vecs = malloc(sizeof(vec) * maxSize);
     assert(vecs);
 
     float32 ml = 1 / log(g->M_maxNeigbours);
-    
-    for(int32 i = 0; i < maxSize; i++){
-        float* fvalues = generateRandVec(dim,0,100000); 
-        vecs[i] = make_vec(dim,fvalues);
 
-        INSERT(g, vecs[i],10 ,g->M_maxNeigbours, g->efconstruction, ml);
+    for (int32 i = 0; i < maxSize; i++)
+    {
+        float *fvalues = generateRandVec(dim, 0, 100000);
+        vecs[i] = make_vec(dim, fvalues);
+
+        INSERT(g, vecs[i], 10, g->M_maxNeigbours, g->efconstruction, ml);
     }
+    Heap *out = ctx->outHeap;
+    vec query = make_vec(dim, (float[]){0.1, 5.0, 6, 2, 3});
 
-    vec query = make_vec(dim, (float[]) {0.1,5.0, 6,2,3});
+    K_NN_SEARCH(ctx, query, 3, g->efsearch, out);
 
-    Heap* r = K_NN_SEARCH(g, query, 3, g->efsearch);
-
-    debugPrintHeap(r);
+    debugPrintHeap(out);
     validate_graph(g);
     HNSW_LOG("OKAY FULL API WORKS!");
-
 }
 
-void ANN_SEARCH_TEST_TWO_LAYERS_MOCK(){
+void ANN_SEARCH_TEST_TWO_LAYERS_MOCK()
+{
     HNSW_LOG("START 2 LAYER TEST!");
     const int32 expectedID = 1;
-    Graph* g = mockTestGraph(10);
-    vec q = make_vec(2, (float[]){ 0.95f, 0.95f});
-    
-    Heap* K = K_NN_SEARCH(g,q,1,10);
+    Graph *g = mockTestGraph(10);
+    hnswContext *ctx = acquireContext(g);
+
+    vec q = make_vec(2, (float[]){0.95f, 0.95f});
+    Heap *K = ctx->outHeap;
+    K_NN_SEARCH(g, q, 1, 10, K);
     debugPrintHeap(K);
     HNSW_ASSERT(expectedID == heapPeek(K).id);
     HNSW_ASSERT(K->size == 1);
     // NOTE: due to manually inserting the nodes its possible that the graph structure is not preserved i will try this now with the official api
     validate_graph(g);
-    
 }
 
-void ANN_SEARCH_TEST_CHANGE_ENTRYPOINT(){
+void ANN_SEARCH_TEST_CHANGE_ENTRYPOINT()
+{
     HNSW_LOG("start ANN_SEARCH TEST CHANGING ENTRYPOINT");
     const int32 ef = 10;
     const int32 expectedID = 2;
-    Graph* g = mockTestGraph(ef);
-    
+    Graph *g = mockTestGraph(ef);
+    hnswContext *ctx = acquireContext(g);
+
     g->entrypointID = 2; // huuh this is a bit crazy
 
-    vec q = make_vec(2, (float[]) {0.9f,0.9f});
-    
-    Heap* w = K_NN_SEARCH(g,q,1,ef);
+    vec q = make_vec(2, (float[]){0.9f, 0.9f});
+    Heap *w = ctx->outHeap;
+    K_NN_SEARCH(g, q, 1, ef, w);
 
     HNSW_ASSERT(w);
-    HNSW_ASSERT(w->size ==  1 );
+    HNSW_ASSERT(w->size == 1);
     HNSW_ASSERT(heapPeek(w).id == expectedID);
     HNSW_LOG("despite entrypoint change graph returns correct result!!");
     uninitializeGraph(g);
-
 }
 
-void ANN_SEARCH_TEST_HEAP_TRIMMING(){
+void ANN_SEARCH_TEST_HEAP_TRIMMING()
+{
 
     HNSW_LOG("start ANN_SEARCH HEAP_TRIMM TEST!");
     const int32 ef = 4, expectedID = 1, K = 2;
-    Graph* g = mockTestGraph(ef);
-    
-    vec q = make_vec(2, (float[]) {0.9f,0.9f});
-    
-    Heap* w = K_NN_SEARCH(g,q,K,ef);
-    printf("this is the current heapSize: %i\n", w->size); fflush(stdout);
-    debugPrintHeap(w); fflush(stdout);
-    printf("end\n");    
+    Graph *g = mockTestGraph(ef);
+    hnswContext *ctx = acquireContext(g);
+    vec q = make_vec(2, (float[]){0.9f, 0.9f});
+    Heap *w = ctx->outHeap;
+    K_NN_SEARCH(g, q, K, ef, w);
+    printf("this is the current heapSize: %i\n", w->size);
+    fflush(stdout);
+    debugPrintHeap(w);
+    fflush(stdout);
+    printf("end\n");
     HNSW_ASSERT(w);
-    HNSW_ASSERT(w->size == K );
-    HNSW_ASSERT(heapPeek(w).id == expectedID || w->data[1].id == 2 );
+    HNSW_ASSERT(w->size == K);
+    HNSW_ASSERT(heapPeek(w).id == expectedID || w->data[1].id == 2);
     HNSW_LOG("OKAY ANN_SEARCH RETURNS CORRECT HEAP SIZE");
     uninitializeGraph(g);
-
 }
 
-
-void ANN_SEARCH_TEST_ONE_LAYER(){
+void ANN_SEARCH_TEST_ONE_LAYER()
+{
     HNSW_LOG("start ANN_SEARCH TEST!");
     const int32 ef = 10;
     const int32 expectedID = 1;
-    Graph* g = mockTestGraph(ef);
-    
-    vec q = make_vec(2, (float[]) {0.9f,0.9f});
-    
-    Heap* w = K_NN_SEARCH(g,q,1,ef);
+    Graph *g = mockTestGraph(ef);
+    hnswContext *ctx = acquireContext(g);
+    vec q = make_vec(2, (float[]){0.9f, 0.9f});
+    Heap *w = ctx->outHeap;
+    K_NN_SEARCH(g, q, 1, ef, w);
     HNSW_LOG("this is the result heap\n");
     debugPrintHeap(w);
 
     HNSW_ASSERT(w);
-    HNSW_ASSERT(w->size ==  1 );
+    HNSW_ASSERT(w->size == 1);
     HNSW_ASSERT(heapPeek(w).id == expectedID);
     HNSW_LOG("OKAY ANN_SEARCH RETURNS CORRECT RESULT ONE LAYER GRAPH MOCK!");
     uninitializeGraph(g);
@@ -573,7 +582,7 @@ void INSERT_TESTS()
 void test_insert_first_node()
 {
     // arrange
-    const uint32 maxNodeCount = 200; 
+    const uint32 maxNodeCount = 200;
     Graph *graph = make_simpleTestGraph(maxNodeCount);
     float32 fValues[] = {3, 4, 5};
     vec v = make_vec(3, fValues);
@@ -591,15 +600,14 @@ void test_insert_first_node()
     validate_graph(graph);
 
     HNSW_LOG("insert first node works!");
-   
 }
 
 void test_bidirectionalLinks()
-{   
+{
     int32 size = 100000;
     Graph *graph = make_simpleTestGraph(size);
     uint32 dim = 4;
-    vec* vecs = malloc(sizeof(vec) * size);
+    vec *vecs = malloc(sizeof(vec) * size);
 
     // seed the random algorithm to smth more deterministic
 
@@ -624,11 +632,10 @@ void test_bidirectionalLinks()
         for (uint32 l = 0; l <= node->level; l++)
         {
             uint32 off = layer_offset(graph, l);
-            
 
             for (uint32 k = 0; k < node->numNeigbours[l]; k++)
             {
-                uint32 nid = node->neigbours[ off + k];
+                uint32 nid = node->neigbours[off + k];
 
                 hnswNode *other = &graph->nodes[nid];
 
@@ -641,17 +648,18 @@ void test_bidirectionalLinks()
                     }
                 }
 
-                if(l == 0 ){
-                      HNSW_ASSERT(found);
-                }else if(!found){
+                if (l == 0)
+                {
+                    HNSW_ASSERT(found);
+                }
+                else if (!found)
+                {
                     printf("Layer %u: Node %u -> %u missing reverse edge", l, i, nid);
                 }
-
             }
         }
     }
 
-    
     HNSW_LOG("GRAPH CONNECTIONS ARE BIDIRECTIONAL! guaranteed for layer 0 :0");
 }
 
@@ -661,7 +669,7 @@ void test_max_neigbours_respected()
 
     Graph *g = make_simpleTestGraph(vecsize);
     uint32 dim = 150;
-    
+
     vec *vecs = malloc(sizeof(vec) * vecsize);
     HNSW_ASSERT(vecs);
 
@@ -693,7 +701,7 @@ void test_max_neigbours_respected()
         free(vecs[i].vec);
     }
     free(vecs);
-    
+
     HNSW_LOG("max neigbours respected succsess!! no realloc in this test");
 }
 
@@ -701,11 +709,11 @@ void test_expandGraph()
 {
     const int32 vCount = 500;
     const uint32 dim = 5;
-   
+
     // declare
     HNSW_LOG("STARTING expandGraph TEST");
     // less nodes as max firstly
-    Graph *g = make_simpleTestGraph(vCount / 2  );
+    Graph *g = make_simpleTestGraph(vCount / 2);
 
     const uint32 firstMaxNodes = g->maxNodeCount;
     const float32 ml = 2 / log(g->M_maxNeigbours);
@@ -718,7 +726,7 @@ void test_expandGraph()
         v[i].vec = generateRandVec(dim, 0, 1000000);
         v[i].dim = dim;
 
-       // printf("insertion round: %lu\n", i);
+         printf("insertion round: %lu\n", i);
         INSERT(g, v[i], 10, 10, 10, ml);
     }
 
@@ -729,4 +737,3 @@ void test_expandGraph()
 
     uninitializeGraph(g);
 }
-

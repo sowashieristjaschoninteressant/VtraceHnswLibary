@@ -88,10 +88,7 @@ void heap_dispose(Heap* heap){
     hnsw_free_mem(heap);
 }
 
-void initSortedBuffer(size_t size, sortedBuffer* buffer){
-    buffer->size = 0;
-    buffer->data = hnsw_alloc_mem(size * sizeof(heapItem), alignof(heapItem));
-}
+
 
 void heap_insert(Heap* heap, uint32 id, float32 dist, void* data){
    if(heap->size >= heap->capacity){
@@ -155,18 +152,50 @@ void heapify(Heap* heap) {
     }
 }
 
-void maxHeapToSortedAscending(Heap* heap, sortedBuffer* buffer){
+sortedBuffer* initSortedBuffer(size_t size){
+    sortedBuffer* buffer = malloc(sizeof(sortedBuffer));
+    assert(buffer);
+    buffer->capacity = size;
+    buffer->data = malloc(sizeof(heapItem) *  buffer->capacity);
+    assert(buffer->data);
+    buffer->size = 0;
+
+    return buffer;
+
+}
+
+void destroySortedBuffer(sortedBuffer* buf){
+    free(buf->data);
+    free(buf);
+}
+
+void putSortedBuffer(sortedBuffer* buf, heapItem* data){
+
+    if(buf->size >= buf->capacity){
+       int32 newCap = buf->capacity ? buf->capacity * 2 : 4;
+       if (newCap < buf->capacity) abort(); // overflow guard
+       
+       heapItem* newPtr = realloc(buf->data, sizeof(heapItem) * newCap);
+       if(!newPtr){
+        HNSW_LOG("okay sorted buffer cannot realloc fuu");
+        abort();
+        }
+        buf->capacity = newCap;
+        buf->data = newPtr;
+    }
+
+    buf->data[buf->size++] = *data;
+     
+}
+
+void heap_drain_to_sorted_buffer(Heap* heap, sortedBuffer* buffer){
  
     int32 originalSize = heap->size;
- 
-    for(int32 i = originalSize - 1; i > 0; i--){
-        
-        swap(&heap->data[0], &heap->data[i]);
-        heap->size--;
-        siftDown(heap, 0);
+    
+    while (heap->size > 0){
+        heapItem item = heapPop(heap);
+        putSortedBuffer(buffer, &item);
     }
  
-    heap->size = originalSize;
-    buffer->data = heap->data;
-    buffer->size = heap->size;
+   
 }

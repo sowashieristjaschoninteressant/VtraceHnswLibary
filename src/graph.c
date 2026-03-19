@@ -10,23 +10,15 @@ Graph *initializeGraph(uint32 maxLayer, uint32 efConstruction, uint32 efSearch, 
 
     // seed random algorithm
     srand((int)time(NULL));
-
-    if (M_maxNeigbours <= 0)
-    {
-        graph->M_maxNeigbours = DEFAULT_MAX_NEIGBOURS;
-    }
-    else
-    {
-        graph->M_maxNeigbours = M_maxNeigbours;
-    }
-
+    graph->M_maxNeigbours = M_maxNeigbours <= 0 ? DEFAULT_MAX_NEIGBOURS : M_maxNeigbours;
+    
     graph->Mmax0 = graph->M_maxNeigbours * 2;
 
     graph->efconstruction = efConstruction;
     graph->efsearch = efSearch;
     graph->maxLayer = maxLayer;
     graph->maxNodeCount = maxNodeCount;
-
+    graph->maxHeapSize = efConstruction * (efConstruction / 2);
     graph->nodes = malloc(sizeof(hnswNode) * graph->maxNodeCount);
     if (!graph->nodes)
     {
@@ -38,37 +30,9 @@ Graph *initializeGraph(uint32 maxLayer, uint32 efConstruction, uint32 efSearch, 
     graph->entrypointID = -1;
     graph->visited = initvList(graph->maxNodeCount);
 
-    initStorage(graph);
+    initContextPool(graph, 5);
 
     return graph;
-}
-
-void initStorage(Graph *graph)
-{
-    uint32 maxPruneBufferSize = graph->Mmax0 * 2;
-
-    graph->storage.candidateHeap = MIN_HEAP(graph->efconstruction);
-    graph->storage.closestResults = MAX_HEAP(graph->efconstruction);
-    graph->storage.discardedHeap = MIN_HEAP(graph->efconstruction);
-    graph->storage.simpleHeap = MAX_HEAP(graph->efconstruction);
-    graph->storage.resultHeap = MAX_HEAP(graph->efconstruction);
-    graph->storage.secondResultHeap = MAX_HEAP(graph->efconstruction);
-    
-    graph->storage.pruneBuffer = hnsw_alloc_mem(sizeof(sortedBuffer), alignof(sortedBuffer));
-    graph->storage.oldCandidatesBuf = hnsw_alloc_mem(sizeof(sortedBuffer), alignof(sortedBuffer));
-
-    initSortedBuffer(maxPruneBufferSize, graph->storage.pruneBuffer);
-    initSortedBuffer(maxPruneBufferSize,graph->storage.oldCandidatesBuf);
-
-    graph->storage.buffer = hnsw_alloc_mem(sizeof(sortedBuffer), alignof(sortedBuffer));
-    if (!graph->storage.buffer)
-    {
-        HNSW_LOG("cannot allocate storage.buffer is there a prob?");
-        abort();
-    }
-
-    graph->storage.buffer->data = NULL;
-    graph->storage.buffer->size = 0;
 }
 
 void makeNode(node *node, vec v, uint32 id, uint32 nodeLevel, uint32 maxNeigbours, int32 mMax0)
@@ -95,7 +59,71 @@ void makeNode(node *node, vec v, uint32 id, uint32 nodeLevel, uint32 maxNeigbour
    memset(node->numNeigbours, 0, sizeof(uint32) * allocationLevel);
 }
 
+hnswContext* acquireContext(Graph* g){
+    hnswContextPool* pool = &g->pool;
 
+    for(int32 i = 0; i < pool->size; i++){
+
+        if(!pool->inUse[i]){
+            pool->inUse[i] = 1;
+
+            hnswContext* context = &pool->pool[i];
+            context->g = g;
+
+            resetContext(context);
+
+            return context;
+
+        }
+
+    }
+
+    HNSW_LOG("no available hnsw contexts");
+    abort();
+}
+
+void releaseContext(Graph* g, hnswContext* ctx){
+    hnswContextPool* p = &g->pool;
+
+    int32 index = (int32)(ctx - p->pool);
+
+    if (index < 0 || index >= p->capacity)
+    {
+        HNSW_LOG("invalid context release");
+        abort();
+    }
+
+    p->inUse[index] = 0;
+
+}
+
+void initContextPool(Graph* g, int32 capacity)
+{
+    
+    g->pool.capacity = capacity;
+    g->pool.size = capacity;
+
+    g->pool.pool = calloc(capacity, sizeof(hnswContext));
+    g->pool.inUse = calloc(capacity, sizeof(uint8));
+
+    for (int i = 0; i < capacity; i++)
+    {   
+        hnswContext* ctx = &g->pool.pool[i];
+
+        ctx->candidateHeap = MIN_HEAP(g->maxHeapSize);
+        ctx->resultHeap = MAX_HEAP(g->maxHeapSize);
+        ctx->secondResultHeap = MAX_HEAP(g->maxHeapSize);
+        ctx->discardHeap = MIN_HEAP(g->maxHeapSize);
+        ctx->outHeap = MIN_HEAP(g->maxHeapSize);
+
+        ctx->buffer = initSortedBuffer(g->maxHeapSize);
+        ctx->tempbuf = initSortedBuffer(g->maxHeapSize);
+        ctx->pruneBuffer = initSortedBuffer(g->maxHeapSize);
+
+        ctx->visited_mark = 0;
+       
+    }
+}
 
 void expandgraph(Graph *graph)
 {
@@ -141,7 +169,8 @@ visitedList initvList(uint32 size)
 void uninitializeGraph(VT_graph *graph)
 {
 
-    
+    free(graph->nodes);
+    free(graph->visited.visited);
     free(graph);
 }
 

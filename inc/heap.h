@@ -28,12 +28,14 @@ typedef struct h_heap Heap;
 struct sortedBuffer{
     heapItem* data;
     int32 size;
+    int32 capacity;
 };
 
 typedef struct sortedBuffer sortedBuffer;
 
-extern void initSortedBuffer(size_t size, sortedBuffer* buffer);
-
+extern sortedBuffer* initSortedBuffer(size_t size);
+extern void destroySortedBuffer(sortedBuffer* buf);
+extern void putSortedBuffer(sortedBuffer* buf, heapItem* data);
 // UTILS
 extern int32 min_cmp( const heapItem* a, const heapItem* b);
 extern int32 max_cmp( const heapItem* a, const heapItem* b);
@@ -56,7 +58,7 @@ extern void heapify(Heap* heap);
 extern void minToMaxHeap(Heap* heap);
 extern void maxToMinHeap(Heap* heap);
 
-extern void maxHeapToSortedAscending(Heap* heap, sortedBuffer* buffer);
+extern void heap_drain_to_sorted_buffer(Heap* heap, sortedBuffer* buffer);
 
 
 #define MAX_HEAP(capacity) heap_init((uint32) capacity, max_cmp);
