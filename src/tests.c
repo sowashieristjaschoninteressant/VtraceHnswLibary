@@ -443,7 +443,7 @@ void INIT_GRAPH_TEST()
     HNSW_ASSERT(graph->maxLayer == maxLayer);
     HNSW_ASSERT(graph->nodes);
     HNSW_ASSERT(graph->pool.pool);
-    HNSW_ASSERT(graph->visited.visited);
+    
 
     HNSW_LOG("GRAPH INITIALISATION WORKS SUCESSFULLY");
 }

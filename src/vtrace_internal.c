@@ -232,20 +232,19 @@ sortedBuffer *SEARCH_LAYER(hnswContext* ctx ,hnswNode *entryPoint, vec q, uint32
     heap_reset(c);
     heap_reset(w);
 
-    incVisitedMark(ctx->g);
+    incVisitedMark(ctx);
 
-    if (ctx->g->visited.visited_mark == 0)
-    {
-        memset(ctx->g->visited.visited, 0, sizeof(uint32) * ctx->g->visited.size);
-    }
 
-    markNodeVisited(ctx->g, entryPoint->id);
+    markNodeVisited(ctx, entryPoint->id);
 
     float32 epDistance = l2_sq_distance_neon_128v(&entryPoint->v, &q);
 
     heap_insert(c, entryPoint->id, epDistance, NULL);
     heap_insert(w, entryPoint->id, epDistance, NULL);
-    
+    uint32* visited = ctx->visited.visited;
+   
+   
+    fflush(stdout);
     while (c->size > 0)
     {
         heapItem current = heapPop(c);
@@ -267,11 +266,12 @@ sortedBuffer *SEARCH_LAYER(hnswContext* ctx ,hnswNode *entryPoint, vec q, uint32
         for (uint32 i = 0; i < nabourCount; i++)
         {
             node *neigbour = getNodeById(ctx->g, currentNode->neigbours[off + i]);
-
-            if (ctx->g->visited.visited[neigbour->id] != ctx->g->visited.visited_mark)
+           
+            printf("neigbourID: %i\n", neigbour->id);
+            if (ctx->visited.visited[neigbour->id] != ctx->visited.visited_mark)
             {
 
-                markNodeVisited(ctx->g, neigbour->id);
+                markNodeVisited(ctx, neigbour->id);
 
                 float32 dist = l2_sq_distance_neon_128v(&neigbour->v, &q);
 
@@ -319,9 +319,9 @@ Heap *SELECT_NEIGBOURS_HEURISTIC(hnswContext* ctx, hnswNode *baseElement, sorted
                 hnswNode *nabour = getNodeById(g, node->neigbours[off + j]);
 
                 float32 dist = l2_sq_distance_neon_128v(&baseElement->v, &nabour->v);
-                if (dist < heapPeek(candidates).dist && g->visited.visited[nabour->id] != g->visited.visited_mark)
+                if (dist < heapPeek(candidates).dist && ctx->visited.visited[nabour->id] != ctx->visited.visited_mark)
                 {
-                    markNodeVisited(g, nabour->id);
+                    markNodeVisited(ctx, nabour->id);
 
                     //  heap_insert(candidates, nabour->id, dist, NULL);
                 }

@@ -172,7 +172,7 @@ void naive_benchmark_insertion()
         {
             float *v = ds.data + i * ds.dim;
             tmp.vec = v;
-            hnsw_insert(hnsw, &tmp, M, ef);
+            hnsw_insert(hnsw, &tmp, M);
         }
         timer_stop(&t);
 
