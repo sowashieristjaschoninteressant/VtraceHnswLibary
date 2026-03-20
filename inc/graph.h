@@ -14,7 +14,7 @@ typedef struct
   uint32 level;
   uint32 *neigbours;
   uint32 *numNeigbours;
-
+  int8* dirty;
   vec v;
 } node;
 
@@ -24,7 +24,7 @@ struct hnsw_visitedList
 {
   uint32 *visited;
   uint32 visited_mark;
-  uint32 size;
+  size_t size;
 };
 
 typedef struct hnsw_visitedList visitedList;
@@ -32,7 +32,7 @@ typedef struct hnswContext hnswContext;
 typedef struct Graph Graph;
 typedef struct hnswContextPool hnswContextPool;
 
-visitedList initvList(uint32 size);
+visitedList initvList(size_t size);
 void resizeVisited(hnswContext *ctx, uint32 newSize);
 
 struct hnswContext
@@ -47,6 +47,7 @@ struct hnswContext
   sortedBuffer *buffer;
   sortedBuffer *tempbuf;
   sortedBuffer *pruneBuffer;
+  DirtyBuffer *dirtyNodes;
   visitedList visited;
 };
 
@@ -94,32 +95,13 @@ extern void uninitializeGraph(VT_graph *graph);
 extern void addNeigbour(node *target, uint32 neighbourId, uint32 layer, uint32 M_MAXneigbours);
 extern void expandgraph(Graph *graph);
 
-HNSW_INLINE void resetContext(hnswContext *ctx)
-{
-
-  heap_reset(ctx->resultHeap);
-  heap_reset(ctx->candidateHeap);
-  heap_reset(ctx->secondResultHeap);
-  heap_reset(ctx->discardHeap);
-
-  if (ctx->buffer)
-    ctx->buffer->size = 0;
-  if (ctx->tempbuf)
-    ctx->tempbuf->size = 0;
-  if (ctx->pruneBuffer)
-    ctx->pruneBuffer->size = 0;
-
-  ctx->visited.visited++; // IMPORTANT (see below)
-}
 
 HNSW_INLINE uint32 layer_offset(Graph *g, uint32 layer)
 {
-  if (!layer)
-  {
-    return 0;
-  }
+    if (layer == 0)
+        return 0;
 
-  return (g->Mmax0) + (layer - 1) * g->M_maxNeigbours;
+    return (g->Mmax0 * 2) + (layer - 1) * (g->M_maxNeigbours * 2);
 }
 
 HNSW_INLINE int hasNeigbour(hnswNode *node, int32 id, int32 layer, int32 off)
@@ -162,5 +144,23 @@ HNSW_INLINE void markNodeVisited(hnswContext* ctx, uint64 id)
     abort();
   }
   ctx->visited.visited[id] = ctx->visited.visited_mark;
+}
+
+HNSW_INLINE void resetContext(hnswContext *ctx)
+{
+
+  heap_reset(ctx->resultHeap);
+  heap_reset(ctx->candidateHeap);
+  heap_reset(ctx->secondResultHeap);
+  heap_reset(ctx->discardHeap);
+
+  if (ctx->buffer)
+    ctx->buffer->size = 0;
+  if (ctx->tempbuf)
+    ctx->tempbuf->size = 0;
+  if (ctx->pruneBuffer)
+    ctx->pruneBuffer->size = 0;
+
+  incVisitedMark(ctx); // IMPORTANT (see below)
 }
 #endif

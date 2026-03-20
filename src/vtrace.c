@@ -37,7 +37,6 @@ int hnsw_search(HNSW* graph, vec* query, int32 k, hnswResult* results){
    
     hnswContext* ctx = acquireContext(graph);
     Heap* out = ctx->outHeap;
-    heap_reset(out);
 
    K_NN_SEARCH(ctx, *query,k,graph->efsearch, out);
   

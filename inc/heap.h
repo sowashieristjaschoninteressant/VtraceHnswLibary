@@ -33,9 +33,25 @@ struct sortedBuffer{
 
 typedef struct sortedBuffer sortedBuffer;
 
+
+typedef struct {
+    int32 id;
+    int32 layer;
+} DirtyItem;
+
+typedef struct
+{
+    DirtyItem *data;
+    int32 size;
+    int32 capacity;
+} DirtyBuffer;
+
+extern DirtyBuffer* initDirtyBuffer(size_t size);
+extern void push_dirtyBuffer(DirtyBuffer* buf, DirtyItem data);
+
 extern sortedBuffer* initSortedBuffer(size_t size);
 extern void destroySortedBuffer(sortedBuffer* buf);
-extern void putSortedBuffer(sortedBuffer* buf, heapItem* data);
+extern void push_buffer(sortedBuffer* buf, heapItem* data);
 // UTILS
 extern int32 min_cmp( const heapItem* a, const heapItem* b);
 extern int32 max_cmp( const heapItem* a, const heapItem* b);
@@ -63,5 +79,13 @@ extern void heap_drain_to_sorted_buffer(Heap* heap, sortedBuffer* buffer);
 
 #define MAX_HEAP(capacity) heap_init((uint32) capacity, max_cmp);
 #define MIN_HEAP(capacity) heap_init((uint32) capacity, min_cmp);
+
+
+HNSW_INLINE void buffer_reset(sortedBuffer* buf){
+    buf->size = 0;
+}
+HNSW_INLINE void Dbuffer_reset(DirtyBuffer* buf){
+    buf->size = 0;
+}
 
 #endif

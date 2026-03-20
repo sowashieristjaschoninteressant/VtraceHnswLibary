@@ -169,7 +169,7 @@ void destroySortedBuffer(sortedBuffer* buf){
     free(buf);
 }
 
-void putSortedBuffer(sortedBuffer* buf, heapItem* data){
+void push_buffer(sortedBuffer* buf, heapItem* data){
 
     if(buf->size >= buf->capacity){
        int32 newCap = buf->capacity ? buf->capacity * 2 : 4;
@@ -188,13 +188,45 @@ void putSortedBuffer(sortedBuffer* buf, heapItem* data){
      
 }
 
+DirtyBuffer* initDirtyBuffer(size_t size){
+    DirtyBuffer* buf = malloc(sizeof(DirtyBuffer));
+    assert(buf);
+
+    buf->capacity = size;
+    buf->data = malloc(sizeof(DirtyItem) *  size);
+    assert(buf->data);
+
+    return buf;
+}
+
+void push_dirtyBuffer(DirtyBuffer* buf, DirtyItem data){
+
+    if(buf->size >= buf->capacity){
+       int32 newCap = buf->capacity ? buf->capacity * 2 : 4;
+       if (newCap < buf->capacity) abort(); // overflow guard
+       
+       DirtyItem* newPtr = realloc(buf->data, sizeof(DirtyItem) * newCap);
+       if(!newPtr){
+        HNSW_LOG("okay sorted buffer cannot realloc fuu");
+        abort();
+        }
+        buf->capacity = newCap;
+        buf->data = newPtr;
+    }
+
+    buf->data[buf->size++] = data;
+
+}
+
+
+
 void heap_drain_to_sorted_buffer(Heap* heap, sortedBuffer* buffer){
  
     int32 originalSize = heap->size;
     
     while (heap->size > 0){
         heapItem item = heapPop(heap);
-        putSortedBuffer(buffer, &item);
+        push_buffer(buffer, &item);
     }
  
    

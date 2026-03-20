@@ -46,13 +46,16 @@ void makeNode(node *node, vec v, uint32 id, uint32 nodeLevel, uint32 maxNeigbour
     memcpy(node->v.vec, v.vec, sizeof(float32) * v.dim);
 
     uint32 allocationLevel = nodeLevel + 1;
-    uint32 capLayer0 = mMax0 + 1;       // layer0 overprovision +1
-    uint32 capUpper = maxNeigbours + 1; // layer>0 overprovision +1
+    uint32 capLayer0 = mMax0 * 2;       // layer0 overprovision +1
+    uint32 capUpper = maxNeigbours * 2; // layer>0 overprovision +1
 
     uint32 totalSlots = capLayer0 + capUpper * nodeLevel;
 
     node->neigbours = hnsw_alloc_mem(sizeof(uint32) * totalSlots, alignof(uint32));
     node->numNeigbours = hnsw_alloc_mem(sizeof(uint32) * allocationLevel, alignof(uint32));
+
+    node->dirty = hnsw_alloc_mem(sizeof(int8) * allocationLevel, alignof(int8));
+    
     memset(node->numNeigbours, 0, sizeof(uint32) * allocationLevel);
 }
 
@@ -117,7 +120,8 @@ void initContextPool(Graph *g, int32 capacity)
         ctx->buffer = initSortedBuffer(g->maxHeapSize);
         ctx->tempbuf = initSortedBuffer(g->maxHeapSize);
         ctx->pruneBuffer = initSortedBuffer(g->maxHeapSize);
-      
+
+        ctx->dirtyNodes = initDirtyBuffer(g->maxHeapSize);
         
     }
 }
@@ -167,7 +171,7 @@ void expandgraph(Graph *graph)
     graph->maxNodeCount = newMaxNodeCount;
 }
 
-visitedList initvList(uint32 size)
+visitedList initvList(size_t size)
 {
     visitedList list;
 
@@ -180,8 +184,10 @@ visitedList initvList(uint32 size)
         HNSW_LOG("error cannot allocate the visited List");
         abort();
     }
-
+    
     memset(list.visited, 0, sizeof(uint32) * size);
+    
+   
 
     return list;
 }
