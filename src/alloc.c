@@ -1,47 +1,10 @@
 #include "alloc.h"
 
-static hnsw_chainAllocator* globalChainAllocator = NULL;
 
-hnsw_chainAllocator* get_global_chainArena(void){
 
-    if(!globalChainAllocator){
-        globalChainAllocator = init_chainArena(DEFAULT_ARRAY_SIZE, DEFAULT_CHUNK_SIZE);
-    }
 
-    return globalChainAllocator;
-}
 
-void* global_chainArena_alloc(uint32 size, uint32 alignment){
 
-    return chainArenaAlloc(get_global_chainArena(), size, alignment);
-}
-
-void destroy_global_chainArena(void){
-
-    if(globalChainAllocator){
-        chainArena_destroy(globalChainAllocator);
-        globalChainAllocator = NULL;
-    }
-}
-
-void* hnsw_alloc_mem(size_t size, uint32 alignment){
-    if(size <= 0 ){
-        HNSW_LOG("alloc(0) is invalid");
-        exit(EXIT_FAILURE);
-    }
-     
-    void* mem = global_chainArena_alloc(size, alignment);
-    if(!mem){
-        HNSW_LOG("out of memory");
-        exit(EXIT_FAILURE);
-    }
-    return mem;
-}
-
-void hnsw_free_mem(void* ptr){
-    HNSW_UNUSED(ptr);
-    return;
-}
 
 
 // this will be here the arena stuff

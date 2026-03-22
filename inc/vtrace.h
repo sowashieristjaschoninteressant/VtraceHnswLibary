@@ -34,12 +34,13 @@ struct hnsw_result_set{
 typedef struct hnsw_result_set hnswResult;
 
 
-int populateresultSet(hnswResult* resultSet, int32 size);
+int populateresultSet(Graph*g, hnswResult* resultSet, int32 size);
 
 // public API
 typedef struct Graph HNSW;
 HNSW_API extern HNSW* hnsw_init(uint32_t ef);
 HNSW_API extern void hnsw_insert(HNSW* graph, vec* vector, int32_t M);
 HNSW_API extern int hnsw_search(HNSW* graph, vec* query, int32_t k, hnswResult* results);
+HNSW_API extern vec* hnsw_linear(HNSW* graph, vec* query);
 HNSW_API extern void hnsw_free(HNSW* graph);
 #endif

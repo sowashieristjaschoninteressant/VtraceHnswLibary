@@ -1,10 +1,10 @@
 #include "vtrace.h"
 
-int populateresultSet(hnswResult* resultSet, int32 size){
+int populateresultSet(Graph*g, hnswResult* resultSet, int32 size){
 
     resultSet->size = size;
-    resultSet->ids = hnsw_alloc_mem(sizeof(uint32) * size, alignof(uint32));
-    resultSet->distances = hnsw_alloc_mem(sizeof(float32) * size, alignof(float32));
+    resultSet->ids = graph_alloc(g,sizeof(uint32) * size, alignof(uint32));
+    resultSet->distances = graph_alloc(g,sizeof(float32) * size, alignof(float32));
 
     if(!resultSet->ids || !resultSet->distances){
         HNSW_LOG("cannot populate resultset! out of memory");
@@ -43,7 +43,7 @@ int hnsw_search(HNSW* graph, vec* query, int32 k, hnswResult* results){
    int32 heapSize = out->size;
    int32 outSize = heapSize < k ? heapSize : k; 
    
-   if(populateresultSet(results, outSize) != HNSW_OK) return HNSW_ERROR;
+   if(populateresultSet(graph,results, outSize) != HNSW_OK) return HNSW_ERROR;
    
    
    for(int32 i = 0; i < outSize; i++){
@@ -59,4 +59,9 @@ int hnsw_search(HNSW* graph, vec* query, int32 k, hnswResult* results){
 void hnsw_free(HNSW* graph){
 
     uninitializeGraph(graph);
+}
+
+vec* hnsw_linear(HNSW* graph, vec* query){
+    
+    return NN_SIMPLE_LINEAR(graph, *query);
 }

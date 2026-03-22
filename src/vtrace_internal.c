@@ -15,7 +15,7 @@ __attribute__((destructor)) static void vtrace_cleanup(void)
 {
     printf("vtrace destructor...");
 
-    destroy_global_chainArena();
+   
 }
 
 /**
@@ -224,7 +224,7 @@ void INSERT(Graph *graph, vec vec, int32 M, uint32 efConstruction, uint32 ml)
 
     newNode = getNodeById(graph, id);
 
-    makeNode(newNode, vec, id, nodeLevel, graph->M_maxNeigbours, graph->Mmax0);
+    makeNode(graph ,newNode, vec, id, nodeLevel, graph->M_maxNeigbours, graph->Mmax0);
 
     if (graph->entrypointID < 0)
     {
@@ -415,7 +415,7 @@ void K_NN_SEARCH(hnswContext *ctx, vec q, int32 K, int32 efsearch, Heap *out)
     SELECT_NEIGBOURS_SIMPLE( buffer, K, out);
 }
 
-vec NN_SIMPLE_LINEAR(Graph *g, vec q)
+vec* NN_SIMPLE_LINEAR(Graph *g, vec q)
 {
 
     int id = 0;
@@ -435,5 +435,5 @@ vec NN_SIMPLE_LINEAR(Graph *g, vec q)
         }
     }
 
-    return getNodeById(g, id)->v;
+    return &getNodeById(g, id)->v;
 }

@@ -124,7 +124,7 @@ void INSERT_POP_MINHEAP_TEST()
     HNSW_LOG("[+] INSERT_POP_MINHEAP WORKS!");
     fflush(stdout);
     heap_dispose(heap);
-    hnsw_free_mem(farray);
+    free(farray);
 
     return;
 }
@@ -611,7 +611,7 @@ void test_insert_first_node()
 
 void test_bidirectionalLinks()
 {
-    int32 size = 10000;
+    int32 size = 1000000;
     Graph *graph = make_simpleTestGraph(size);
     uint32 dim = 4;
     vec *vecs = malloc(sizeof(vec) * size);
@@ -626,7 +626,7 @@ void test_bidirectionalLinks()
     {
         vecs[j].vec = generateRandVec(dim, 0, 100000);
         vecs[j].dim = dim;
-
+        printf("insertion round: %i\n", j);
         INSERT(graph, vecs[j], 10, 100, ml);
     }
     int total = 0;

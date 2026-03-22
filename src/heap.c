@@ -23,7 +23,7 @@
 
 Heap* heap_init(uint32 capacity, cmp cmpFunc){
 
-    Heap* heap = hnsw_alloc_mem(sizeof(Heap), alignof(Heap));
+    Heap* heap = malloc(sizeof(Heap));
     
     HNSW_ASSERT(heap);
     heap->data = malloc(sizeof(heapItem) * capacity);
@@ -50,8 +50,8 @@ void maxToMinHeap(Heap* heap){
 }
 
 void heap_dispose(Heap* heap){
-    hnsw_free_mem(heap->data);
-    hnsw_free_mem(heap);
+    free(heap->data);
+    free(heap);
 }
 
 

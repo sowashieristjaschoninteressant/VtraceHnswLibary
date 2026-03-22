@@ -26,4 +26,5 @@ extern HNSW* hnsw_init(uint32_t ef);
 extern void hnsw_insert(HNSW* graph, vec* vector, int32_t M);
 extern int hnsw_search(HNSW* graph, vec* query, int32_t k, hnswResult* results);
 extern void hnsw_free(HNSW* graph);
+extern vec* hnsw_linear(HNSW* graph, vec* query)
 #endif

@@ -1,10 +1,6 @@
 
-
-#include "stdlib.h"
-#include "time.h"
-#include "stdio.h"
-#include "hnsw_public.h"
 #include "vtraceCommon.h"
+#include "hnsw_public.h"
 #include "vec.h"
 
 #define VTRACE_TESTS
@@ -212,7 +208,7 @@ void benchmark_search()
         float *v = baseV.data + i * baseV.dim;
         tmp.vec = v;
         
-        hnsw_insert(hnsw, &tmp, M, ef);
+        hnsw_insert(hnsw, &tmp, M);
     }
 
     destroy_dataset(baseV);
@@ -244,7 +240,7 @@ void benchmark_search()
 
     for(int i = 0; i < numQueries; i++){
         tmp.vec = qv.data + i * qv.dim;
-        int gt = hnsw_linear(hnsw,tmp);
+        vec* gt = hnsw_linear(hnsw,&tmp);
         // check distances 
 
         printf("this is the tmpRset id:%i, gt: %i\n", tempRset[i].ids[0], gt);

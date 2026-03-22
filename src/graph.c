@@ -19,6 +19,9 @@ Graph *initializeGraph(uint32 maxLayer, uint32 efConstruction, uint32 efSearch, 
     graph->maxLayer = maxLayer;
     graph->maxNodeCount = maxNodeCount;
     graph->maxHeapSize = efConstruction * (efConstruction / 2);
+
+    graph->alloc = init_chainArena( 10,DEFAULT_CHUNK_SIZE);
+
     graph->nodes = malloc(sizeof(hnswNode) * graph->maxNodeCount);
     if (!graph->nodes)
     {
@@ -34,7 +37,10 @@ Graph *initializeGraph(uint32 maxLayer, uint32 efConstruction, uint32 efSearch, 
     return graph;
 }
 
-void makeNode(node *node, vec v, int64 id, int32 nodeLevel, uint32 maxNeigbours, int32 mMax0)
+
+
+
+void makeNode( Graph* g, node *node, vec v, int64 id, int32 nodeLevel, uint32 maxNeigbours, int32 mMax0)
 {
     // because layer 1 will be saved in array slot 0 but when i pass 0 into the allocation func it will abort
 
@@ -42,7 +48,8 @@ void makeNode(node *node, vec v, int64 id, int32 nodeLevel, uint32 maxNeigbours,
     node->level = nodeLevel;
 
     node->v.dim = v.dim;
-    node->v.vec = hnsw_alloc_mem(sizeof(float32) * v.dim, alignof(float32));
+    
+    node->v.vec = graph_alloc(g, sizeof(float32) * v.dim, alignof(float32));
     memcpy(node->v.vec, v.vec, sizeof(float32) * v.dim);
 
     uint32 allocationLevel = nodeLevel + 1;
@@ -51,8 +58,8 @@ void makeNode(node *node, vec v, int64 id, int32 nodeLevel, uint32 maxNeigbours,
 
     uint32 totalSlots = capLayer0 + capUpper * nodeLevel;
 
-    node->neigbours = hnsw_alloc_mem(sizeof(int64) * totalSlots, alignof(int64));
-    node->numNeigbours = hnsw_alloc_mem(sizeof(int32) * allocationLevel, alignof(int32));
+    node->neigbours = graph_alloc(g, sizeof(int64) * totalSlots, alignof(int64));
+    node->numNeigbours = graph_alloc(g, sizeof(int32) * allocationLevel, alignof(int32));
     
     memset(node->numNeigbours, 0, sizeof(uint32) * allocationLevel);
 }
@@ -190,11 +197,25 @@ visitedList initvList(size_t size)
     return list;
 }
 
+vec makeANNVec(Graph* g,uint32 dim, float* values){
+    
+    vec v;
+    v.vec = graph_alloc(g,sizeof(float32) * dim, alignof(dim));
+    HNSW_ASSERT(v.vec);
+    v.dim = dim;
+    memcpy(v.vec, values, sizeof(float32) * dim);
+
+    return v;
+    
+
+
+}
+
 void uninitializeGraph(VT_graph *graph)
 {
 
     free(graph->nodes);
-    
+    chainArena_destroy(graph->alloc);
     free(graph);
 }
 

@@ -43,13 +43,4 @@ static inline uint32 align_up(uint32 value, uint32 alignment) {
 }
 
 
-extern void* hnsw_alloc_mem(size_t size, uint32 alignment);
-extern void hnsw_free_mem(void* ptr);
-
-
-// global chainAllocator
-extern hnsw_chainAllocator* get_global_chainArena(void);
-extern void* global_chainArena_alloc(uint32 size, uint32 alignment);
-extern void destroy_global_chainArena(void);
-
 #endif
