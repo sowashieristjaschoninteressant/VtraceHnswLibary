@@ -1,7 +1,7 @@
 
-#include "vtraceCommon.h"
+
 #include "hnsw_public.h"
-#include "vec.h"
+
 
 #define VTRACE_TESTS
 
@@ -192,9 +192,9 @@ void benchmark_search()
     FILE *filep = create_file("benchmarkSearch.csv");
 
     fprintf(filep, "N,dimension,M,ef_search,avg_latency_ms,qps, recall, numQueries\n");
-
+    printf("okay loading vecs!\n");
     // first load the base vecs
-    Dataset baseV = load_fvecs("/Users/leon/code/hnsw/benchmark/datasets/siftsmall/siftsmall_base.fvecs");
+    Dataset baseV = load_fvecs("./benchmark/datasets/sift/sift_base.fvecs");
     const int ef = 200;
     const int M = 10;
     HNSW *hnsw = hnsw_init(ef);
@@ -213,7 +213,7 @@ void benchmark_search()
 
     destroy_dataset(baseV);
     // load queries
-    Dataset qv = load_fvecs("/Users/leon/code/hnsw/benchmark/datasets/siftsmall/siftsmall_query.fvecs");
+    Dataset qv = load_fvecs("./benchmark/datasets/sift/sift_query.fvecs");
     
     tmp.dim = qv.dim;
     struct timer t;
@@ -227,7 +227,7 @@ void benchmark_search()
     HNSW_LOG("Okay allocating Stuff ");
     hnswResult* tempRset = malloc(sizeof(hnswResult) * numQueries);
     assert(tempRset);
-
+    
     timer_start(&t);
     for(int i = 0; i < numQueries; i++){
      tmp.vec = qv.data + i * qv.dim;
@@ -240,7 +240,7 @@ void benchmark_search()
 
     for(int i = 0; i < numQueries; i++){
         tmp.vec = qv.data + i * qv.dim;
-        vec* gt = hnsw_linear(hnsw,&tmp);
+        int gt = hnsw_linear(hnsw,&tmp);
         // check distances 
 
         printf("this is the tmpRset id:%i, gt: %i\n", tempRset[i].ids[0], gt);

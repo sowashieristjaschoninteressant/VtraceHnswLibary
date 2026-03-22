@@ -15,7 +15,7 @@ release:
 	$(CC) ./src/*.c $(LIB_FLAGS) $(OPTIMIZATION_FLAGS) -o ./bin/$(NAME)
 
 benchmark: release
-	$(CC)  ./benchmark/benchmark.c -L/Users/leon/code/hnsw/bin -lvtrace $(HEADERS) $(OPTIMIZATION_FLAGS) -o ./bin/bench
+	$(CC)  ./benchmark/benchmark.c -L./bin -lvtrace $(HEADERS) $(OPTIMIZATION_FLAGS) -o ./bin/bench
 
 
 debugTest: debug

@@ -45,11 +45,6 @@ void prune_neighbours(hnswContext *ctx, hnswNode *node, int32 layer, int32 max)
     sortedBuffer *buf = ctx->pruneBuffer;
     sortedBuffer *out = ctx->tempbuf;
 
-    // am Anfang von prune_neighbours
-    if (node->id == 2 && layer == 0)
-    {
-        printf("PRUNING node=2 layer=0 count=%i\n", node->numNeigbours[layer]);
-    }
 
     buffer_reset(buf);
     buffer_reset(out);
@@ -320,8 +315,7 @@ sortedBuffer *SEARCH_LAYER(hnswContext *ctx, hnswNode *entryPoint, vec q, uint32
 
         node *currentNode = getNodeById(ctx->g, current.id);
 
-        if (currentNode->level < lc)
-            continue;
+       assert(currentNode->level >= lc);
 
         uint32 nabourCount = currentNode->numNeigbours[lc];
 
@@ -415,7 +409,7 @@ void K_NN_SEARCH(hnswContext *ctx, vec q, int32 K, int32 efsearch, Heap *out)
     SELECT_NEIGBOURS_SIMPLE( buffer, K, out);
 }
 
-vec* NN_SIMPLE_LINEAR(Graph *g, vec q)
+int64 NN_SIMPLE_LINEAR(Graph *g, vec q)
 {
 
     int id = 0;
@@ -435,5 +429,5 @@ vec* NN_SIMPLE_LINEAR(Graph *g, vec q)
         }
     }
 
-    return &getNodeById(g, id)->v;
+    return id;
 }
