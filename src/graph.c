@@ -34,7 +34,7 @@ Graph *initializeGraph(uint32 maxLayer, uint32 efConstruction, uint32 efSearch, 
     return graph;
 }
 
-void makeNode(node *node, vec v, uint32 id, uint32 nodeLevel, uint32 maxNeigbours, int32 mMax0)
+void makeNode(node *node, vec v, int64 id, int32 nodeLevel, uint32 maxNeigbours, int32 mMax0)
 {
     // because layer 1 will be saved in array slot 0 but when i pass 0 into the allocation func it will abort
 
@@ -51,10 +51,8 @@ void makeNode(node *node, vec v, uint32 id, uint32 nodeLevel, uint32 maxNeigbour
 
     uint32 totalSlots = capLayer0 + capUpper * nodeLevel;
 
-    node->neigbours = hnsw_alloc_mem(sizeof(uint32) * totalSlots, alignof(uint32));
-    node->numNeigbours = hnsw_alloc_mem(sizeof(uint32) * allocationLevel, alignof(uint32));
-
-    node->dirty = hnsw_alloc_mem(sizeof(int8) * allocationLevel, alignof(int8));
+    node->neigbours = hnsw_alloc_mem(sizeof(int64) * totalSlots, alignof(int64));
+    node->numNeigbours = hnsw_alloc_mem(sizeof(int32) * allocationLevel, alignof(int32));
     
     memset(node->numNeigbours, 0, sizeof(uint32) * allocationLevel);
 }
@@ -121,7 +119,7 @@ void initContextPool(Graph *g, int32 capacity)
         ctx->tempbuf = initSortedBuffer(g->maxHeapSize);
         ctx->pruneBuffer = initSortedBuffer(g->maxHeapSize);
 
-        ctx->dirtyNodes = initDirtyBuffer(g->maxHeapSize);
+     
         
     }
 }

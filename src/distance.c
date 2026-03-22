@@ -17,6 +17,24 @@ float32 l2_sq_distance(const vec *__restrict a, const vec *__restrict b)
     return dist;
 }
 
+float cosine_distance(vec *__restrict a, vec *__restrict b)
+{
+    float dotProd = 0.0f;
+    float a_norm, b_norm;
+    a_norm = b_norm = 0.0f;
+
+    for (uint32 i = 0; i < a->dim; i++)
+    {
+        dotProd += a->vec[i] * b->vec[i];
+
+        a_norm += (a->vec[i] * a->vec[i]);
+        b_norm += (b->vec[i] * b->vec[i]);
+    }
+
+    return dotProd / (sqrtf(a_norm) * sqrtf(b_norm));
+}
+
+#ifdef ARM_NEON
 float cosine_distance_neon(vec *__restrict a, vec *__restrict b)
 {
     uint32_t i = 0;
@@ -46,26 +64,11 @@ float cosine_distance_neon(vec *__restrict a, vec *__restrict b)
         a_norm += a->vec[i] * a->vec[i];
         b_norm += b->vec[i] * b->vec[i];
     }
-
+    
     return dot / (sqrtf(a_norm) * sqrtf(b_norm));
 }
 
-float cosine_distance(vec *__restrict a, vec *__restrict b)
-{
-    float dotProd = 0.0f;
-    float a_norm, b_norm;
-    a_norm = b_norm = 0.0f;
 
-    for (int i = 0; i < a->dim; i++)
-    {
-        dotProd += a->vec[i] * b->vec[i];
-
-        a_norm += (a->vec[i] * a->vec[i]);
-        b_norm += (b->vec[i] * b->vec[i]);
-    }
-
-    return dotProd / (sqrtf(a_norm) * sqrtf(b_norm));
-}
 
 /*
 when i objdumped the lib i belive i saw aleready some smid instructions but u can never be sure
@@ -205,3 +208,4 @@ float l2_sq_distance_neon_128_unroll(const vec *__restrict a, const vec *__restr
 
     return sum;
 }
+#endif

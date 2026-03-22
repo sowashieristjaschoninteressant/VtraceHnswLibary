@@ -18,7 +18,8 @@ LIBARY INCLUDES
 #include "stdbool.h"
 #include "float.h"
 #include "stddef.h"
-#include "arm_neon.h"
+#include "stdint.h"
+
 
 /*
 =====================

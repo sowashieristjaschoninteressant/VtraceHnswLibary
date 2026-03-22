@@ -7,6 +7,7 @@
 #define HNSW_API
 #endif
 #include"stdlib.h"
+#include "stdint.h"
 
 struct hnsw_result_set{
     size_t size;
@@ -21,8 +22,8 @@ typedef struct vector vec;
 
 typedef struct hnsw_result_set hnswResult;
 typedef struct Graph HNSW;
- extern HNSW* hnsw_init(uint32_t ef);
- extern void hnsw_insert(HNSW* graph, vec* vector, int32_t M);
- extern int hnsw_search(HNSW* graph, vec* query, int32_t k, hnswResult* results);
- extern void hnsw_free(HNSW* graph);
+extern HNSW* hnsw_init(uint32_t ef);
+extern void hnsw_insert(HNSW* graph, vec* vector, int32_t M);
+extern int hnsw_search(HNSW* graph, vec* query, int32_t k, hnswResult* results);
+extern void hnsw_free(HNSW* graph);
 #endif

@@ -10,11 +10,10 @@
 
 typedef struct
 {
-  uint64 id;
-  uint32 level;
-  uint32 *neigbours;
-  uint32 *numNeigbours;
-  int8* dirty;
+  int64 id;
+  int32 level;
+  int64 *neigbours;
+  int32 *numNeigbours;
   vec v;
 } node;
 
@@ -47,7 +46,6 @@ struct hnswContext
   sortedBuffer *buffer;
   sortedBuffer *tempbuf;
   sortedBuffer *pruneBuffer;
-  DirtyBuffer *dirtyNodes;
   visitedList visited;
 };
 
@@ -89,7 +87,7 @@ extern void releaseContext(Graph *g, hnswContext *ctx);
 extern void initContextPool(Graph *g, int32 capacity);
 
 typedef Graph VT_graph;
-extern void makeNode(node *node, vec v, uint32 id, uint32 nodeLevel, uint32 maxNeigbours, int32 mMax0);
+extern void makeNode(node *node, vec v, int64 id, int32 nodeLevel, uint32 maxNeigbours, int32 mMax0);
 extern VT_graph *initializeGraph(uint32 maxLayer, uint32 efConstruction, uint32 efSearch, uint32 M_maxNeigbours, uint32 maxNodeCount);
 extern void uninitializeGraph(VT_graph *graph);
 extern void addNeigbour(node *target, uint32 neighbourId, uint32 layer, uint32 M_MAXneigbours);
@@ -139,7 +137,7 @@ HNSW_INLINE void markNodeVisited(hnswContext* ctx, uint64 id)
 {
   if (!ctx->visited.visited || id >= ctx->visited.size)
   {
-    printf("id index: %lu, visited size as of right now: %lu\n", id, ctx->visited.size);
+    printf("id index: %lu, visited size as of right now: %llu\n", id, ctx->visited.size);
     HNSW_LOG("visit list needs to grow");
     abort();
   }

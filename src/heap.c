@@ -1,41 +1,7 @@
 #include "heap.h"
 #include "alloc.h"
 
-HNSW_INLINE uint32 parent(uint32 i) { 
-    return (i - 1) / 2; 
-}
-HNSW_INLINE uint32 left(uint32 i)   {
-     return 2*i + 1;
-    }
-HNSW_INLINE uint32 right(uint32 i)  {
-     return 2*i + 2;
-    }
 
-HNSW_INLINE void swap(heapItem* a, heapItem* b){
-    heapItem temp = *a;
-
-     *a = *b;
-     *b = temp;
-}
-
-HNSW_INLINE void siftDown(Heap* heap, uint32 index){
-    while(1){
-        uint32 l = left(index), r = right(index);
-        uint32 best = index;
-
-        if(l < heap->size && heap->compareFunc(&heap->data[l], &heap->data[best]) < 0){
-            best = l;
-        }
-        if(r < heap->size && heap->compareFunc(&heap->data[r], &heap->data[best]) < 0 ){
-            best = r;
-        }
-        if(best == index){
-            break;
-        }
-        swap(  &heap->data[index],  &heap->data[best]);
-        index = best;
-    }
-}
 
 /**
  * if x < 0
@@ -90,7 +56,7 @@ void heap_dispose(Heap* heap){
 
 
 
-void heap_insert(Heap* heap, uint32 id, float32 dist, void* data){
+void heap_insert(Heap* heap, int64 id, float32 dist, void* data){
    if(heap->size >= heap->capacity){
         // increase capacity
         int32 oldCap = heap->capacity;        
@@ -128,10 +94,7 @@ heapItem heapPop(Heap* heap){
     return root;
 }
 
-inline heapItem heapPeek(Heap* heap){
-   HNSW_ASSERT(heap->size != 0);
-    return heap->data[0];
-}
+
 
 void heap_reset(Heap* heap){
 
@@ -143,6 +106,12 @@ void debugPrintHeap(Heap* heap){
     for(uint32 i = 0; i < heap->size; i++){
 
         printf("id=%i, dist=%.2f\n", heap->data[i].id, heap->data[i].dist);
+    }
+}
+
+void debugPrintBuf(sortedBuffer* buf){
+    for(int32 i = 0; i < buf->size; i++){
+        printf("id=%i, dist=%.2f\n", buf->data[i].id, buf->data[i].dist);
     }
 }
 
@@ -188,46 +157,19 @@ void push_buffer(sortedBuffer* buf, heapItem* data){
      
 }
 
-DirtyBuffer* initDirtyBuffer(size_t size){
-    DirtyBuffer* buf = malloc(sizeof(DirtyBuffer));
-    assert(buf);
-
-    buf->capacity = size;
-    buf->data = malloc(sizeof(DirtyItem) *  size);
-    assert(buf->data);
-
-    return buf;
-}
-
-void push_dirtyBuffer(DirtyBuffer* buf, DirtyItem data){
-
-    if(buf->size >= buf->capacity){
-       int32 newCap = buf->capacity ? buf->capacity * 2 : 4;
-       if (newCap < buf->capacity) abort(); // overflow guard
-       
-       DirtyItem* newPtr = realloc(buf->data, sizeof(DirtyItem) * newCap);
-       if(!newPtr){
-        HNSW_LOG("okay sorted buffer cannot realloc fuu");
-        abort();
-        }
-        buf->capacity = newCap;
-        buf->data = newPtr;
-    }
-
-    buf->data[buf->size++] = data;
-
-}
-
-
-
 void heap_drain_to_sorted_buffer(Heap* heap, sortedBuffer* buffer){
- 
-    int32 originalSize = heap->size;
-    
+  
     while (heap->size > 0){
         heapItem item = heapPop(heap);
         push_buffer(buffer, &item);
     }
- 
-   
+
+    uint32 l = 0;
+    uint32 r = buffer->size -1;
+    
+    while( l < r ){
+        heapItem tmp = buffer->data[l];
+        buffer->data[l++] = buffer->data[r];
+        buffer->data[r--] = tmp;
+    }
 }

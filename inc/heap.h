@@ -6,7 +6,7 @@
 struct heapItem {
 
     void* data;
-    uint32 id;
+    int64 id;
     float32 dist; // key
 };
 typedef struct heapItem heapItem;
@@ -33,22 +33,6 @@ struct sortedBuffer{
 
 typedef struct sortedBuffer sortedBuffer;
 
-
-typedef struct {
-    int32 id;
-    int32 layer;
-} DirtyItem;
-
-typedef struct
-{
-    DirtyItem *data;
-    int32 size;
-    int32 capacity;
-} DirtyBuffer;
-
-extern DirtyBuffer* initDirtyBuffer(size_t size);
-extern void push_dirtyBuffer(DirtyBuffer* buf, DirtyItem data);
-
 extern sortedBuffer* initSortedBuffer(size_t size);
 extern void destroySortedBuffer(sortedBuffer* buf);
 extern void push_buffer(sortedBuffer* buf, heapItem* data);
@@ -56,18 +40,11 @@ extern void push_buffer(sortedBuffer* buf, heapItem* data);
 extern int32 min_cmp( const heapItem* a, const heapItem* b);
 extern int32 max_cmp( const heapItem* a, const heapItem* b);
 
-HNSW_INLINE uint32 left(uint32 i);
-HNSW_INLINE uint32 right(uint32 i);
-HNSW_INLINE uint32 parent(uint32 i);
-HNSW_INLINE void swap(heapItem* a, heapItem* b);
-HNSW_INLINE void siftDown(Heap* heap, uint32 index);
-
 // exposed api functions
 extern Heap* heap_init(uint32 capacity, cmp cmpFunc);
 extern void heap_dispose(Heap* heap);
-extern void heap_insert(Heap* heap, uint32 id, float32 dist, void* data);
+extern void heap_insert(Heap* heap, int64 id, float32 dist, void* data);
 extern heapItem heapPop(Heap* heap);
-extern inline heapItem heapPeek(Heap* heap);
 extern void heap_reset(Heap* heap);
 extern void debugPrintHeap(Heap* heap);
 extern void heapify(Heap* heap);
@@ -80,12 +57,53 @@ extern void heap_drain_to_sorted_buffer(Heap* heap, sortedBuffer* buffer);
 #define MAX_HEAP(capacity) heap_init((uint32) capacity, max_cmp);
 #define MIN_HEAP(capacity) heap_init((uint32) capacity, min_cmp);
 
+HNSW_INLINE void swap(heapItem* a, heapItem* b){
+    heapItem temp = *a;
+
+     *a = *b;
+     *b = temp;
+}
+
+
+HNSW_INLINE uint32 parent(uint32 i) { 
+    return (i - 1) / 2; 
+}
+HNSW_INLINE uint32 left(uint32 i)   {
+     return 2*i + 1;
+    }
+HNSW_INLINE uint32 right(uint32 i)  {
+     return 2*i + 2;
+    }
+
+HNSW_INLINE heapItem heapPeek(Heap* heap){
+   HNSW_ASSERT(heap->size != 0);
+    return heap->data[0];
+}
+
+
 
 HNSW_INLINE void buffer_reset(sortedBuffer* buf){
     buf->size = 0;
 }
-HNSW_INLINE void Dbuffer_reset(DirtyBuffer* buf){
-    buf->size = 0;
+
+
+HNSW_INLINE void siftDown(Heap* heap, uint32 index){
+    while(1){
+        uint32 l = left(index), r = right(index);
+        uint32 best = index;
+
+        if(l < heap->size && heap->compareFunc(&heap->data[l], &heap->data[best]) < 0){
+            best = l;
+        }
+        if(r < heap->size && heap->compareFunc(&heap->data[r], &heap->data[best]) < 0 ){
+            best = r;
+        }
+        if(best == index){
+            break;
+        }
+        swap(  &heap->data[index],  &heap->data[best]);
+        index = best;
+    }
 }
 
 #endif

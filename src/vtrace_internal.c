@@ -48,7 +48,7 @@ void prune_neighbours(hnswContext *ctx, hnswNode *node, int32 layer, int32 max)
     // am Anfang von prune_neighbours
     if (node->id == 2 && layer == 0)
     {
-        printf("PRUNING node=2 layer=0 count=%d\n", node->numNeigbours[layer]);
+        printf("PRUNING node=2 layer=0 count=%i\n", node->numNeigbours[layer]);
     }
 
     buffer_reset(buf);
@@ -58,7 +58,7 @@ void prune_neighbours(hnswContext *ctx, hnswNode *node, int32 layer, int32 max)
 
     if (oldCount > maxCapacity)
     {
-        printf("OLDCOUNT CORRUPT: node=%d layer=%d oldCount=%d maxCapacity=%d\n",
+        printf("OLDCOUNT CORRUPT: node=%ld layer=%d oldCount=%d maxCapacity=%d\n",
                node->id, layer, oldCount, maxCapacity);
         abort();
     }
@@ -73,7 +73,7 @@ void prune_neighbours(hnswContext *ctx, hnswNode *node, int32 layer, int32 max)
 
         heapItem item;
         item.id = nid;
-        item.dist = l2_sq_distance_neon_128v(&node->v, &n->v);
+        item.dist = l2_sq_distance(&node->v, &n->v);
 
         push_buffer(buf, &item);
     }
@@ -136,8 +136,8 @@ void prune_neighbours(hnswContext *ctx, hnswNode *node, int32 layer, int32 max)
     {
         hnswNode *other = getNodeById(g, selected->data[i].id);
         int32 off2 = layer_offset(g, layer);
-
-        // check existence
+        if(other->id == node->id) continue;
+        // check existence  
         int exists = 0;
         for (int j = 0; j < other->numNeigbours[layer]; j++)
         {
@@ -153,9 +153,7 @@ void prune_neighbours(hnswContext *ctx, hnswNode *node, int32 layer, int32 max)
             if (other->numNeigbours[layer] < max)
             {
                 other->neigbours[off2 + other->numNeigbours[layer]++] = node->id;
-               
             }
-           
         }
     }
 
@@ -182,19 +180,20 @@ void prune_neighbours(hnswContext *ctx, hnswNode *node, int32 layer, int32 max)
         int32 otherMax = layer == 0 ? g->Mmax0 : g->M_maxNeigbours;
         if (other->numNeigbours[layer] > otherMax)
         {
-            printf("REVERSE EDGE OVERFLOW: node=%d layer=%d count=%d max=%d\n",
+            printf("REVERSE EDGE OVERFLOW: node=%ld layer=%d count=%d max=%d\n",
                    other->id, layer, other->numNeigbours[layer], otherMax);
             abort();
         }
     }
 }
 
-
- void connect_bidirectional(hnswContext *ctx, hnswNode *a, hnswNode *b, int32 layer)
+void connect_bidirectional(hnswContext *ctx, hnswNode *a, hnswNode *b, int32 layer)
 {
     Graph *g = ctx->g;
     int32 maxNeigbours = layer == 0 ? g->Mmax0 : g->M_maxNeigbours;
     int32 off = layer_offset(g, layer);
+
+    if(a->id == b->id) return;
 
     if (a->numNeigbours[layer] >= maxNeigbours)
         prune_neighbours(ctx, a, layer, maxNeigbours);
@@ -209,14 +208,13 @@ void prune_neighbours(hnswContext *ctx, hnswNode *node, int32 layer, int32 max)
         b->neigbours[off + b->numNeigbours[layer]++] = a->id;
 }
 
-
-void INSERT(Graph *graph, vec vec, int32 M, uint32 Mmax, uint32 efConstruction, uint32 ml)
+void INSERT(Graph *graph, vec vec, int32 M, uint32 efConstruction, uint32 ml)
 {
     hnswContext *ctx = acquireContext(graph);
 
     hnswNode *originalEP, *ep, *newNode;
     int32 nodeLevel = VTlevelSample(MAX_LEVEL, ml);
-    uint32 id = graph->count;
+    int64 id = graph->count;
 
     if (graph->maxNodeCount <= id)
     {
@@ -248,34 +246,25 @@ void INSERT(Graph *graph, vec vec, int32 M, uint32 Mmax, uint32 efConstruction, 
         ep = getNodeById(graph, W->data[0].id);
     }
 
-    DirtyBuffer *dirtyNodes = ctx->dirtyNodes;
-
     //-----------------------
     // 2. INSERT PER LAYER
     //----------------------
-   for (int32 layer = MIN(ep->level, nodeLevel); layer >= 0; layer--)
-{
-    sortedBuffer *resultBuffer = SEARCH_LAYER(ctx, ep, vec, efConstruction, layer);
-    sortedBuffer *selected = ctx->tempbuf;
-    buffer_reset(selected);
-    SELECT_NEIGBOURS_HEURISTIC(ctx, newNode, resultBuffer, selected, M);
-
-    int32 maxNeigbours = layer == 0 ? graph->Mmax0 : graph->M_maxNeigbours;
-
-    for (int i = 0; i < selected->size; i++)
+    for (int32 layer = MIN(ep->level, nodeLevel); layer >= 0; layer--)
     {
-        hnswNode *neighbor = getNodeById(graph, selected->data[i].id);
+        sortedBuffer *resultBuffer = SEARCH_LAYER(ctx, ep, vec, efConstruction, layer);
+        sortedBuffer *selected = ctx->tempbuf;
+        buffer_reset(selected);
+        SELECT_NEIGBOURS_HEURISTIC(ctx, newNode, resultBuffer, selected, M);
 
-        if (layer <= newNode->level && layer <= neighbor->level)
-            connect_bidirectional(ctx, newNode, neighbor, layer);
+        for (int i = 0; i < selected->size; i++)
+        {
+            hnswNode *neighbor = getNodeById(graph, selected->data[i].id);
 
-       
+            if (layer <= newNode->level && layer <= neighbor->level)
+                connect_bidirectional(ctx, newNode, neighbor, layer);
+        }
     }
 
-    
-}
-   
-    
     if (newNode->level > originalEP->level)
     {
         graph->entrypointID = newNode->id;
@@ -287,7 +276,7 @@ void INSERT(Graph *graph, vec vec, int32 M, uint32 Mmax, uint32 efConstruction, 
     releaseContext(graph, ctx);
 }
 
-Heap *SELECT_NEIGBOURS_SIMPLE(hnswContext *ctx, sortedBuffer *c, uint32 M, Heap *out)
+Heap *SELECT_NEIGBOURS_SIMPLE(sortedBuffer *c, uint32 M, Heap *out)
 {
 
     for (int32 i = 0; i < c->size && out->size < M; i++)
@@ -298,7 +287,7 @@ Heap *SELECT_NEIGBOURS_SIMPLE(hnswContext *ctx, sortedBuffer *c, uint32 M, Heap 
     return out;
 }
 
-sortedBuffer *SEARCH_LAYER(hnswContext *ctx, hnswNode *entryPoint, vec q, uint32 ef, uint32 lc)
+sortedBuffer *SEARCH_LAYER(hnswContext *ctx, hnswNode *entryPoint, vec q, uint32 ef, int32 lc)
 {
     const int off = layer_offset(ctx->g, lc);
     Heap *c = ctx->candidateHeap; // min heap candidate list
@@ -313,11 +302,10 @@ sortedBuffer *SEARCH_LAYER(hnswContext *ctx, hnswNode *entryPoint, vec q, uint32
 
     markNodeVisited(ctx, entryPoint->id);
 
-    float32 epDistance = l2_sq_distance_neon_128v(&entryPoint->v, &q);
+    float32 epDistance = l2_sq_distance(&entryPoint->v, &q);
 
     heap_insert(c, entryPoint->id, epDistance, NULL);
     heap_insert(w, entryPoint->id, epDistance, NULL);
-    uint32 *visited = ctx->visited.visited;
 
     while (c->size > 0)
     {
@@ -346,7 +334,7 @@ sortedBuffer *SEARCH_LAYER(hnswContext *ctx, hnswNode *entryPoint, vec q, uint32
 
                 markNodeVisited(ctx, neigbour->id);
 
-                float32 dist = l2_sq_distance_neon_128v(&neigbour->v, &q);
+                float32 dist = l2_sq_distance(&neigbour->v, &q);
 
                 if (dist < heapPeek(w).dist || w->size < ef)
                 {
@@ -375,14 +363,17 @@ sortedBuffer *SELECT_NEIGBOURS_HEURISTIC(hnswContext *ctx, hnswNode *baseElement
     for (int i = 0; i < candidates->size; i++)
     {
         heapItem c = candidates->data[i];
+
+        if(c.id == baseElement->id) continue; 
+
         hnswNode *cand = getNodeById(g, c.id);
-        float d_cd = l2_sq_distance_neon_128v(&baseElement->v, &cand->v);
+        float d_cd = l2_sq_distance(&baseElement->v, &cand->v);
 
         int8 good = 1;
         for (int j = 0; j < result->size; j++)
         {
             hnswNode *r = getNodeById(g, result->data[j].id);
-            float d_cr = l2_sq_distance_neon_128v(&cand->v, &r->v);
+            float d_cr = l2_sq_distance(&cand->v, &r->v);
 
             // heuristic condition
             if (d_cr < d_cd)
@@ -421,7 +412,7 @@ void K_NN_SEARCH(hnswContext *ctx, vec q, int32 K, int32 efsearch, Heap *out)
 
     buffer = SEARCH_LAYER(ctx, entryPoint, q, efsearch, 0);
 
-    SELECT_NEIGBOURS_SIMPLE(ctx, buffer, K, out);
+    SELECT_NEIGBOURS_SIMPLE( buffer, K, out);
 }
 
 vec NN_SIMPLE_LINEAR(Graph *g, vec q)
@@ -435,7 +426,7 @@ vec NN_SIMPLE_LINEAR(Graph *g, vec q)
 
         hnswNode *current = &g->nodes[i];
 
-        float32 currDist = l2_sq_distance_neon_128v(&q, &current->v);
+        float32 currDist = l2_sq_distance(&q, &current->v);
 
         if (currDist < bestdist)
         {

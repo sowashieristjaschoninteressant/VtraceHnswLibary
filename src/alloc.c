@@ -39,6 +39,7 @@ void* hnsw_alloc_mem(size_t size, uint32 alignment){
 }
 
 void hnsw_free_mem(void* ptr){
+    HNSW_UNUSED(ptr);
     return;
 }
 
@@ -127,7 +128,7 @@ void hnsw_free_mem(void* ptr){
  void chainArena_destroy(hnsw_chainAllocator* chainAllocator){
     if(!chainAllocator || !chainAllocator->arenaPtr) return;
 
-    for(uint32 i = 0; i < chainAllocator->arraySize; i++){
+    for(int32 i = 0; i < chainAllocator->arraySize; i++){
         arena_destroy(chainAllocator->arenaPtr[i]);
     }
 

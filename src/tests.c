@@ -46,7 +46,7 @@ void validate_graph(Graph *g)
     int32 max = 0;
     int32 off = 0;
 
-    for (uint32 i = 0; i < g->count; i++)
+    for (int64 i = 0; i < g->count; i++)
     {
         node *n = &g->nodes[i];
         for (uint32 l = 0; l <= n->level; l++)
@@ -54,15 +54,15 @@ void validate_graph(Graph *g)
             max = l == 0 ? g->Mmax0 : g->M_maxNeigbours;
             if (n->numNeigbours[l] > max)
             {
-                printf("OVERFLOW node=%d layer=%d count=%d max=%d\n",
+                printf("OVERFLOW node=%ld layer=%d count=%d max=%d\n",
                        n->id, l, n->numNeigbours[l], max);
             }
 
             HNSW_ASSERT(n->numNeigbours[l] <= max);
-            for (uint32 j = 0; j < n->numNeigbours[l]; j++)
+            for (int32 j = 0; j < n->numNeigbours[l]; j++)
             {
                 off = layer_offset(g, l);
-                uint32 nb = n->neigbours[off + j];
+                int64 nb = n->neigbours[off + j];
                 HNSW_ASSERT(nb < g->count);
                 HNSW_ASSERT(nb != i);
             }
@@ -84,9 +84,9 @@ Graph *mockTestGraph(uint32 efSearch)
     vec v1 = make_vec(2, (float[]){1.0f, 0.0f});
     vec v2 = make_vec(2, (float[]){0.0f, 1.0f});
 
-    INSERT(graph, v0, Mmax, Mmax, efConstruction, 0);
-    INSERT(graph, v1, Mmax, Mmax, efConstruction, 0);
-    INSERT(graph, v2, Mmax, Mmax, efConstruction, 0);
+    INSERT(graph, v0, Mmax, efConstruction, 0);
+    INSERT(graph, v1, Mmax, efConstruction, 0);
+    INSERT(graph, v2, Mmax, efConstruction, 0);
 
     return graph;
 }
@@ -175,7 +175,7 @@ void DETERMINISTIC_INSERTPOP_TEST()
 {
     const uint32 size = 10;
     Heap *heap = heap_init(size, max_cmp);
-    float32 sValues[size] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+    float32 sValues[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
 
     for (uint32 i = 0; i < size; i++)
     {
@@ -313,7 +313,7 @@ void CHAINARENA_USENEXT_TEST()
     int32 arenaSize = 10;
 
     hnsw_chainAllocator *carena = init_chainArena(arenas, arenaSize);
-    uint32 oldOffset = carena->current;
+    int32 oldOffset = carena->current;
 
     int8 *testBytes = chainArenaAlloc(carena, 10, alignof(int8));
     int8 *newByteAllocation = chainArenaAlloc(carena, 10, alignof(int8));
@@ -332,7 +332,7 @@ void CHAINARENA_GROW_TEST()
     // prepare
     const int32 arenas = 3;
     const uint32 chunkSize = 20;
-    const uint32 magicNr = 0x5;
+    const int8 magicNr = 0x5;
     int8 *byteptr;
     hnsw_chainAllocator *carena = init_chainArena(arenas, chunkSize);
 
@@ -374,17 +374,18 @@ void SELECT_NEAREST_NABOURS()
     Graph *g = mockTestGraph(20);
     hnswContext *ctx = acquireContext(g);
 
-    Heap *c = heap_init(num_candidates, max_cmp);
+    sortedBuffer *c = initSortedBuffer(num_candidates);
     for (uint32 i = 0; i < num_candidates; i++)
-    {
-        heap_insert(c, i, distances[i], NULL);
+    {   
+        heapItem item = {.dist = distances[i], .id = i};
+        push_buffer(c, &item);
     }
 
     printf("Candidates in max-heap order (root = largest distance):\n");
-    debugPrintHeap(c);
+    //debugPrintHeap(c);
 
     // Step 2: Select M nearest neighbors
-    SELECT_NEIGBOURS_SIMPLE(g, c, M, ctx->outHeap);
+    SELECT_NEIGBOURS_SIMPLE( c, M, ctx->outHeap);
 
     // Step 3: Pop from the resulting max-heap to get M closest
     printf("\nSelected %u nearest neighbors (max-heap root = farthest of the closest):\n", M);
@@ -395,7 +396,7 @@ void SELECT_NEAREST_NABOURS()
     }
 
     // Cleanup
-    heap_dispose(c);
+    destroySortedBuffer(c);
 }
 
 void SIMPLE_SEARCH_LAYERTEST()
@@ -485,7 +486,7 @@ void FULL_API_INSERT_SEARCH_TEST()
         float *fvalues = generateRandVec(dim, 0, 100000);
         vecs[i] = make_vec(dim, fvalues);
 
-        INSERT(g, vecs[i], 10, g->M_maxNeigbours, g->efconstruction, ml);
+        INSERT(g, vecs[i], 10, g->efconstruction, ml);
     }
     Heap *out = ctx->outHeap;
     vec query = make_vec(dim, (float[]){0.1, 5.0, 6, 2, 3});
@@ -506,7 +507,7 @@ void ANN_SEARCH_TEST_TWO_LAYERS_MOCK()
 
     vec q = make_vec(2, (float[]){0.95f, 0.95f});
     Heap *K = ctx->outHeap;
-    K_NN_SEARCH(g, q, 1, 10, K);
+    K_NN_SEARCH(ctx, q, 1, 10, K);
     debugPrintHeap(K);
     HNSW_ASSERT(expectedID == heapPeek(K).id);
     HNSW_ASSERT(K->size == 1);
@@ -526,7 +527,7 @@ void ANN_SEARCH_TEST_CHANGE_ENTRYPOINT()
 
     vec q = make_vec(2, (float[]){0.9f, 0.9f});
     Heap *w = ctx->outHeap;
-    K_NN_SEARCH(g, q, 1, ef, w);
+    K_NN_SEARCH(ctx, q, 1, ef, w);
 
     HNSW_ASSERT(w);
     HNSW_ASSERT(w->size == 1);
@@ -544,7 +545,7 @@ void ANN_SEARCH_TEST_HEAP_TRIMMING()
     hnswContext *ctx = acquireContext(g);
     vec q = make_vec(2, (float[]){0.9f, 0.9f});
     Heap *w = ctx->outHeap;
-    K_NN_SEARCH(g, q, K, ef, w);
+    K_NN_SEARCH(ctx, q, K, ef, w);
     printf("this is the current heapSize: %i\n", w->size);
     fflush(stdout);
     debugPrintHeap(w);
@@ -596,7 +597,7 @@ void test_insert_first_node()
 
     float32 ml = 1 / log(graph->M_maxNeigbours);
 
-    INSERT(graph, v, M, graph->M_maxNeigbours, 200, ml);
+    INSERT(graph, v, M, 200, ml);
 
     // assert
     HNSW_ASSERT(graph->count == 1);
@@ -626,7 +627,7 @@ void test_bidirectionalLinks()
         vecs[j].vec = generateRandVec(dim, 0, 100000);
         vecs[j].dim = dim;
 
-        INSERT(graph, vecs[j], 10, 200, 100, ml);
+        INSERT(graph, vecs[j], 10, 100, ml);
     }
     int total = 0;
     int missing = 0;
@@ -685,7 +686,7 @@ void test_max_neigbours_respected()
     {
         vecs[j].vec = generateRandVec(dim, 0, 1000000);
         vecs[j].dim = dim;
-       INSERT(g, vecs[j], g->M_maxNeigbours, g->M_maxNeigbours, g->efconstruction, ml);
+       INSERT(g, vecs[j], g->M_maxNeigbours, g->efconstruction, ml);
     }
     int32 max = 0;
     for (uint32 i = 0; i < g->count; i++)
@@ -732,7 +733,7 @@ void test_expandGraph()
         v[i].dim = dim;
 
         printf("insertion round: %lu\n", i);
-        INSERT(g, v[i], 10, 10, 10, ml);
+        INSERT(g, v[i], 10, 10, ml);
     }
 
     HNSW_ASSERT(g->maxNodeCount == firstMaxNodes * 2);

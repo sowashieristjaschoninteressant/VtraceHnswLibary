@@ -1,11 +1,11 @@
 
 CC := gcc
-HEADERS := -I /Users/leon/code/hnsw/inc
+HEADERS := -I ./inc
 LIB_FLAGS := $(HEADERS) -shared -fPIC -fvisibility=hidden
 
 OPTIMIZATION_FLAGS := -ffast-math -O3 -march=native -ffast-math -flto
-DEBUG_FLAGS := -fsanitize=address -fsanitize=undefined -Wall -Wextra -O0 -g
-NAME := libvtrace.so
+DEBUG_FLAGS :=  -Wall -Wextra -O0 -g
+NAME := libvtrace.dll
 
 .PHONY: all debug release benchmark debugTest clean
 

@@ -24,10 +24,10 @@ enum SELECT_NEIG_HEURISTIC_FLAGS {
 
 extern int VTlevelSample(uint32,float32);
 // ALGORITHMS
-sortedBuffer *SEARCH_LAYER(hnswContext* ctx ,hnswNode *entryPoint, vec q, uint32 ef, uint32 lc);
-Heap* SELECT_NEIGBOURS_SIMPLE(hnswContext* ctx, sortedBuffer *c, uint32 M, Heap* out);
+sortedBuffer* SEARCH_LAYER(hnswContext *ctx, hnswNode *entryPoint, vec q, uint32 ef, int32 lc);
+Heap* SELECT_NEIGBOURS_SIMPLE( sortedBuffer *c, uint32 M, Heap* out);
 sortedBuffer *SELECT_NEIGBOURS_HEURISTIC(hnswContext *ctx, hnswNode *baseElement, sortedBuffer *candidates,sortedBuffer* out, int32 M);
-void  INSERT(Graph* graph,vec vec,int32 M, uint32 Mmax, uint32 efConstruction, uint32 ml);
+void  INSERT(Graph* graph,vec vec,int32 M, uint32 efConstruction, uint32 ml);
 void K_NN_SEARCH(hnswContext* ctx, vec q,int32 K, int32 efsearch, Heap* out);
 vec NN_SIMPLE_LINEAR(Graph* g, vec q);
 

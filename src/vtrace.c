@@ -28,7 +28,7 @@ HNSW* hnsw_init(uint32 ef){
 void hnsw_insert(HNSW* graph, vec* vector, int32 M){
     float32 ml = DEFAULT_LEVEL_MAG(graph->M_maxNeigbours);
 
-    INSERT(graph,*vector, M  ,graph->M_maxNeigbours,graph->efconstruction,ml);
+    INSERT(graph,*vector, M,graph->efconstruction,ml);
 
 }
 

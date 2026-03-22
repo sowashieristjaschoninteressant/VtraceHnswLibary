@@ -22,8 +22,8 @@ typedef struct arena hnswArena;
 struct chainArena{
     hnswArena** arenaPtr;
     int32 current;
-    uint32 chunkSize;
-    uint32 arraySize;
+    int32 chunkSize;
+    int32 arraySize;
     
 };
 
