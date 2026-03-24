@@ -68,7 +68,7 @@ void prune_neighbours(hnswContext *ctx, hnswNode *node, int32 layer, int32 max)
 
         heapItem item;
         item.id = nid;
-        item.dist = l2_sq_distance(&node->v, &n->v);
+        item.dist =l2_sq_distance_fast(&node->v, &n->v);
 
         push_buffer(buf, &item);
     }
@@ -297,7 +297,7 @@ sortedBuffer *SEARCH_LAYER(hnswContext *ctx, hnswNode *entryPoint, vec q, uint32
 
     markNodeVisited(ctx, entryPoint->id);
 
-    float32 epDistance = l2_sq_distance(&entryPoint->v, &q);
+    float32 epDistance = l2_sq_distance_fast(&entryPoint->v, &q);
 
     heap_insert(c, entryPoint->id, epDistance, NULL);
     heap_insert(w, entryPoint->id, epDistance, NULL);
@@ -328,7 +328,7 @@ sortedBuffer *SEARCH_LAYER(hnswContext *ctx, hnswNode *entryPoint, vec q, uint32
 
                 markNodeVisited(ctx, neigbour->id);
 
-                float32 dist = l2_sq_distance(&neigbour->v, &q);
+                float32 dist = l2_sq_distance_fast(&neigbour->v, &q);
 
                 if (dist < heapPeek(w).dist || w->size < ef)
                 {
@@ -361,13 +361,13 @@ sortedBuffer *SELECT_NEIGBOURS_HEURISTIC(hnswContext *ctx, hnswNode *baseElement
         if(c.id == baseElement->id) continue; 
 
         hnswNode *cand = getNodeById(g, c.id);
-        float d_cd = l2_sq_distance(&baseElement->v, &cand->v);
+        float d_cd = l2_sq_distance_fast(&baseElement->v, &cand->v);
 
         int8 good = 1;
         for (int j = 0; j < result->size; j++)
         {
             hnswNode *r = getNodeById(g, result->data[j].id);
-            float d_cr = l2_sq_distance(&cand->v, &r->v);
+            float d_cr = l2_sq_distance_fast(&cand->v, &r->v);
 
             // heuristic condition
             if (d_cr < d_cd)
@@ -409,25 +409,37 @@ void K_NN_SEARCH(hnswContext *ctx, vec q, int32 K, int32 efsearch, Heap *out)
     SELECT_NEIGBOURS_SIMPLE( buffer, K, out);
 }
 
-int64 NN_SIMPLE_LINEAR(Graph *g, vec q)
+void NN_SIMPLE_LINEAR(Graph *g, vec *q, int K, int *out_ids)
 {
+    // just use a simple array and track worst
+    float *best_dists = malloc(sizeof(float) * K);
+    int *best_ids = malloc(sizeof(int) * K);
+    
+    // init with infinity
+    for(int i = 0; i < K; i++){
+        best_dists[i] = LDBL_MAX;
+        best_ids[i] = -1;
+    }
 
-    int id = 0;
-    float32 bestdist = LDBL_MAX;
-
-    for (int i = 0; i < g->count; i++)
-    {
-
+    for(int i = 0; i < g->count; i++){
         hnswNode *current = &g->nodes[i];
+        float dist = l2_sq_distance_fast(q, &current->v);
 
-        float32 currDist = l2_sq_distance(&q, &current->v);
+        // find worst in our current top K
+        int worst_idx = 0;
+        for(int j = 1; j < K; j++){
+            if(best_dists[j] > best_dists[worst_idx])
+                worst_idx = j;
+        }
 
-        if (currDist < bestdist)
-        {
-            bestdist = currDist;
-            id = current->id;
+        // replace if better
+        if(dist < best_dists[worst_idx]){
+            best_dists[worst_idx] = dist;
+            best_ids[worst_idx] = current->id;
         }
     }
 
-    return id;
+    memcpy(out_ids, best_ids, sizeof(int) * K);
+    free(best_dists);
+    free(best_ids);
 }

@@ -61,7 +61,7 @@ void hnsw_free(HNSW* graph){
     uninitializeGraph(graph);
 }
 
-int hnsw_linear(HNSW* graph, vec* query){
+void hnsw_linear(HNSW* g, vec *q, int K, int *out_ids){
     
-    return NN_SIMPLE_LINEAR(graph, *query);
+    return NN_SIMPLE_LINEAR(g, q,K,out_ids);
 }

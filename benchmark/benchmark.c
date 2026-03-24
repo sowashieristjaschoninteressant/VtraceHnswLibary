@@ -25,7 +25,8 @@ Dataset load_fvecs(const char *path)
         printf("dataset cannot be opend?\n");
         abort();
     }
-
+    printf("okaz is it loadin\n");
+    fflush(stdout);
     int dim;
     fread(&dim, 4, 1, f);
 
@@ -41,7 +42,7 @@ Dataset load_fvecs(const char *path)
     ds.data = malloc(ds.n * dim * sizeof(float));
     assert(ds.data);
     for (int i = 0; i < ds.n; i++)
-    {
+    {   
         fread(&dim, 4, 1, f);
         fread(ds.data + i * dim, 4, dim, f);
     }
@@ -204,7 +205,7 @@ void benchmark_search()
     for (int i = 0; i < baseV.n; i++)
     {   
        
-        fflush(stdout);
+       
         float *v = baseV.data + i * baseV.dim;
         tmp.vec = v;
         
@@ -237,18 +238,25 @@ void benchmark_search()
     timer_stop(&t);
 
     // get recall
-
+    int* bestIds = malloc(sizeof(int) * K);
     for(int i = 0; i < numQueries; i++){
         tmp.vec = qv.data + i * qv.dim;
-        int gt = hnsw_linear(hnsw,&tmp);
+        hnsw_linear(hnsw,&tmp,K, bestIds);
         // check distances 
 
-        printf("this is the tmpRset id:%i, gt: %i\n", tempRset[i].ids[0], gt);
-        if(tempRset[i].ids[0] == gt) {
-            printf("okay my shitty algo atleast works?\n");
+        printf("this is the tmpRset id:%i, gt: %i\n", tempRset[i].ids[0], bestIds[0]);
+        for(int j = 0; j < K; j++){
+            
+            for(int k = 0; k < K; k++){
+           if(tempRset[i].ids[k] == bestIds[j]){
             correct++;
+            break;
+         }
+             }
         }
-    }
+        }
+        
+    
 
      recall = (double) correct / numQueries;
 
@@ -260,7 +268,7 @@ void benchmark_search()
             numQueries/t.elapsed,      // QPS
             recall,
             numQueries);
-
+    free(bestIds);
     free(tempRset);
     destroy_dataset(qv);
     hnsw_free(hnsw);
@@ -269,6 +277,14 @@ void benchmark_search()
 
 int main()
 {
+
+    
+
+#ifdef __AVX2__
+    printf("AVX2 is defined in benchmark.c\n");
+#else
+    printf("AVX2 NOT defined in benchmark.c\n");
+#endif
 
 benchmark_search();
 }

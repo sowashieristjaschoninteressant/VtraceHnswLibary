@@ -3,9 +3,9 @@ CC := gcc
 HEADERS := -I ./inc
 LIB_FLAGS := $(HEADERS) -shared -fPIC -fvisibility=hidden
 
-OPTIMIZATION_FLAGS := -ffast-math -O3 -march=native -ffast-math -flto
-DEBUG_FLAGS :=  -Wall -Wextra -O0 -g
-NAME := libvtrace.dll
+OPTIMIZATION_FLAGS := -ffast-math -O3 -march=native -ffast-math -flto -lm -mavx2 -mfma
+DEBUG_FLAGS :=  -Wall -Wextra -O0 -g -lm -mavx2 -mfma
+NAME := libvtrace.so
 
 .PHONY: all debug release benchmark debugTest clean
 

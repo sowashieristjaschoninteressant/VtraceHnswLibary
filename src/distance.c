@@ -1,16 +1,32 @@
 #include "distance.h"
-
 #include "vtrace.h"
+
+float l2_sq_distance_fast(const vec *__restrict a,const vec *__restrict b){
+    printf("DO I EVEN GET CALLED\n");
+    #ifdef ARM_NEON
+     printf("okaz! l2sq distance avx2 gets called!\n");
+    return l2_sq_distance_neon(a,b);
+    #endif
+    if(__builtin_cpu_supports("avx2")){
+    printf("okaz! l2sq distance avx2 gets called!\n");
+    return l2_sq_distance_avx2(a,b);
+   }
+    printf("okaz! l2_sq_distance gets called!\n");
+    return l2_sq_distance(a,b);
+    
+}
+
+
 // shit when i compile with optimisation flags the floating point comparision is dying so i might have a problem here
-float32 l2_sq_distance(const vec *__restrict a, const vec *__restrict b)
+float l2_sq_distance(const vec *__restrict a, const vec *__restrict b)
 {
-    float32 dist = 0.0f;
+    float dist = 0.0f;
 
     for (uint32 i = 0; i < a->dim; i++)
     {
 
-        float32 diff = a->vec[i] - b->vec[i];
-
+        float diff = a->vec[i] - b->vec[i];
+        
         dist += diff * diff;
     }
 
@@ -33,6 +49,8 @@ float cosine_distance(vec *__restrict a, vec *__restrict b)
 
     return dotProd / (sqrtf(a_norm) * sqrtf(b_norm));
 }
+
+
 
 #ifdef ARM_NEON
 float cosine_distance_neon(vec *__restrict a, vec *__restrict b)
@@ -89,7 +107,7 @@ float32 l2_sq_distance_neon(const vec *__restrict a, const vec *__restrict b)
         sum_vec = vfmaq_f32(sum_vec, diff, diff);
     }
 
-    float32 sum = vaddvq_f32(sum_vec);
+    float sum = vaddvq_f32(sum_vec);
 
     for (; i < a->dim; i++)
     {
@@ -120,7 +138,7 @@ float l2_sq_distance_neon_128v(const vec *__restrict a, const vec *__restrict b)
         sum_vec = vfmaq_f32(sum_vec, diff2, diff2);
     }
 
-    float32 sum = vaddvq_f32(sum_vec);
+    float sum = vaddvq_f32(sum_vec);
 
     for (; i < a->dim; i++)
     {
@@ -208,4 +226,143 @@ float l2_sq_distance_neon_128_unroll(const vec *__restrict a, const vec *__restr
 
     return sum;
 }
+
+
 #endif
+
+    static inline float hsum_avx(__m256 v)
+{
+    __m128 low  = _mm256_castps256_ps128(v);
+    __m128 high = _mm256_extractf128_ps(v, 1);
+    __m128 sum4 = _mm_add_ps(low, high);
+    __m128 shuf = _mm_movehdup_ps(sum4);
+    __m128 sum2 = _mm_add_ps(sum4, shuf);
+    __m128 sum1 = _mm_add_ss(sum2, _mm_movehl_ps(shuf, sum2));
+    return _mm_cvtss_f32(sum1);
+}
+
+
+// equivalent of l2_sq_distance_neon
+float l2_sq_distance_avx2(const vec *__restrict a, const vec *__restrict b)
+{
+    uint32_t i = 0;
+    __m256 sum_vec = _mm256_setzero_ps();
+
+    for (; i + 8 <= a->dim; i += 8)
+    {
+        __m256 va   = _mm256_loadu_ps(a->vec + i);
+        __m256 vb   = _mm256_loadu_ps(b->vec + i);
+        __m256 diff = _mm256_sub_ps(va, vb);
+        sum_vec     = _mm256_fmadd_ps(diff, diff, sum_vec);
+    }
+
+    float32 sum = hsum_avx(sum_vec);
+
+    // scalar tail
+    for (; i < a->dim; i++)
+    {
+        float d = a->vec[i] - b->vec[i];
+        sum += d * d;
+    }
+
+    return sum;
+}
+
+    // equivalent of l2_sq_distance_neon_128v (processes 16 floats per iter)
+float l2_sq_distance_avx2_128v(const vec *__restrict a, const vec *__restrict b)
+{
+    uint32_t i = 0;
+    __m256 sum_vec = _mm256_setzero_ps();
+
+    for (; i + 16 <= a->dim; i += 16)
+    {
+        __m256 va1   = _mm256_loadu_ps(a->vec + i);
+        __m256 vb1   = _mm256_loadu_ps(b->vec + i);
+        __m256 va2   = _mm256_loadu_ps(a->vec + i + 8);
+        __m256 vb2   = _mm256_loadu_ps(b->vec + i + 8);
+
+        __m256 diff1 = _mm256_sub_ps(va1, vb1);
+        __m256 diff2 = _mm256_sub_ps(va2, vb2);
+
+        sum_vec = _mm256_fmadd_ps(diff1, diff1, sum_vec);
+        sum_vec = _mm256_fmadd_ps(diff2, diff2, sum_vec);
+    }
+
+    float sum = hsum_avx(sum_vec);
+
+    for (; i < a->dim; i++)
+    {
+        float d = a->vec[i] - b->vec[i];
+        sum += d * d;
+    }
+
+    return sum;
+}
+
+
+// equivalent of l2_sq_distance_neon_128_unroll (fixed 128 dim, fully unrolled)
+// AVX2 does 8 floats per register vs NEON's 4, so 16 registers covers 128 floats
+float l2_sq_distance_avx2_unroll(const vec *__restrict a, const vec *__restrict b)
+{
+    __m256 s0 = _mm256_setzero_ps(), s1 = _mm256_setzero_ps();
+    __m256 s2 = _mm256_setzero_ps(), s3 = _mm256_setzero_ps();
+
+    #define STEP(s, off) \
+        { __m256 d = _mm256_sub_ps(_mm256_loadu_ps(a->vec + off), \
+                                    _mm256_loadu_ps(b->vec + off)); \
+          s = _mm256_fmadd_ps(d, d, s); }
+
+    STEP(s0,  0) STEP(s1,  8)
+    STEP(s2, 16) STEP(s3, 24)
+    STEP(s0, 32) STEP(s1, 40)
+    STEP(s2, 48) STEP(s3, 56)
+    STEP(s0, 64) STEP(s1, 72)
+    STEP(s2, 80) STEP(s3, 88)
+    STEP(s0, 96) STEP(s1, 104)
+    STEP(s2,112) STEP(s3, 120)
+
+    #undef STEP
+
+    __m256 sum_vec = _mm256_add_ps(
+        _mm256_add_ps(s0, s1),
+        _mm256_add_ps(s2, s3)
+    );
+
+    return hsum_avx(sum_vec);
+}
+
+// equivalent of cosine_distance_neon
+float cosine_distance_avx2(const vec *__restrict a, const vec *__restrict b)
+{
+    uint32_t i = 0;
+    __m256 dot_acc    = _mm256_setzero_ps();
+    __m256 a_norm_acc = _mm256_setzero_ps();
+    __m256 b_norm_acc = _mm256_setzero_ps();
+
+    for (; i + 8 <= a->dim; i += 8)
+    {
+        __m256 va = _mm256_loadu_ps(a->vec + i);
+        __m256 vb = _mm256_loadu_ps(b->vec + i);
+
+        dot_acc    = _mm256_fmadd_ps(va, vb, dot_acc);
+        a_norm_acc = _mm256_fmadd_ps(va, va, a_norm_acc);
+        b_norm_acc = _mm256_fmadd_ps(vb, vb, b_norm_acc);
+    }
+
+    float dot    = hsum_avx(dot_acc);
+    float a_norm = hsum_avx(a_norm_acc);
+    float b_norm = hsum_avx(b_norm_acc);
+
+    // scalar tail
+    for (; i < a->dim; i++)
+    {
+        dot    += a->vec[i] * b->vec[i];
+        a_norm += a->vec[i] * a->vec[i];
+        b_norm += b->vec[i] * b->vec[i];
+    }
+
+    return dot / (sqrtf(a_norm) * sqrtf(b_norm));
+}
+
+
+

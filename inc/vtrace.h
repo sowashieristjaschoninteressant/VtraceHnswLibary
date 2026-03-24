@@ -17,7 +17,7 @@ THIS IS A PROJECT FOR A UNIVERSITY THESIS SO THERE IS ABSOLUTELY NO WARRENTY OF 
 
 
 
-#define DEFAULT_MAX_ELEMENTS 50000
+#define DEFAULT_MAX_ELEMENTS 1000000
 #define DEFAULT_MAX_LAYERS 10
 #define DEFAULT_LEVEL_MAG(Mmax)  1 / log(Mmax);
 
@@ -41,6 +41,6 @@ typedef struct Graph HNSW;
 HNSW_API extern HNSW* hnsw_init(uint32_t ef);
 HNSW_API extern void hnsw_insert(HNSW* graph, vec* vector, int32_t M);
 HNSW_API extern int hnsw_search(HNSW* graph, vec* query, int32_t k, hnswResult* results);
-HNSW_API extern int hnsw_linear(HNSW* graph, vec* query);
+HNSW_API extern void hnsw_linear(HNSW* g, vec *q, int K, int *out_ids);
 HNSW_API extern void hnsw_free(HNSW* graph);
 #endif
