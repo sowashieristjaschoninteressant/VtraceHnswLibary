@@ -10,10 +10,6 @@
 
 #define MAX_LEVEL 16
 
-
-
-
-
 extern int VTlevelSample(uint32,float32);
 // ALGORITHMS
 sortedBuffer* SEARCH_LAYER(hnswContext *ctx, hnswNode *entryPoint, vec q, uint32 ef, int32 lc);

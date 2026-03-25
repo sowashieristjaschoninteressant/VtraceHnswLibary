@@ -1,21 +1,6 @@
 #include "distance.h"
 #include "vtrace.h"
 
-float l2_sq_distance_fast(const vec *__restrict a,const vec *__restrict b){
-    printf("DO I EVEN GET CALLED\n");
-    #ifdef ARM_NEON
-     printf("okaz! l2sq distance avx2 gets called!\n");
-    return l2_sq_distance_neon(a,b);
-    #endif
-    if(__builtin_cpu_supports("avx2")){
-    printf("okaz! l2sq distance avx2 gets called!\n");
-    return l2_sq_distance_avx2(a,b);
-   }
-    printf("okaz! l2_sq_distance gets called!\n");
-    return l2_sq_distance(a,b);
-    
-}
-
 
 // shit when i compile with optimisation flags the floating point comparision is dying so i might have a problem here
 float l2_sq_distance(const vec *__restrict a, const vec *__restrict b)
@@ -228,9 +213,10 @@ float l2_sq_distance_neon_128_unroll(const vec *__restrict a, const vec *__restr
 }
 
 
-#endif
+#elif defined(__AVX2__)
+#include "immintrin.h"
 
-    static inline float hsum_avx(__m256 v)
+     float hsum_avx(__m256 v)
 {
     __m128 low  = _mm256_castps256_ps128(v);
     __m128 high = _mm256_extractf128_ps(v, 1);
@@ -364,5 +350,19 @@ float cosine_distance_avx2(const vec *__restrict a, const vec *__restrict b)
     return dot / (sqrtf(a_norm) * sqrtf(b_norm));
 }
 
-
-
+#endif
+float l2_sq_distance_fast(const vec *__restrict a,const vec *__restrict b){
+    
+  #ifdef ARM_NEON
+     printf("okaz! l2sq distance avx2 gets called!\n");
+    return l2_sq_distance_neon(a,b);
+  #elif defined(__AVX2__)
+  
+  
+    return l2_sq_distance_avx2(a,b);
+  
+  #elif
+   
+    return l2_sq_distance(a,b);
+  #endif
+}

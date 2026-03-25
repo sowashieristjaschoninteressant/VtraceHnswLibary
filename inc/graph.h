@@ -77,7 +77,7 @@ struct Graph
 
   int64 entrypointID;
   node *nodes;
-  hnswContextPool pool;
+  hnswContextPool pool;// manages reusable per-operation
   hnsw_chainAllocator* alloc;
 };
 

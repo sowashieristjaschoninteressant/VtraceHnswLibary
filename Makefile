@@ -3,8 +3,8 @@ CC := gcc
 HEADERS := -I ./inc
 LIB_FLAGS := $(HEADERS) -shared -fPIC -fvisibility=hidden
 
-OPTIMIZATION_FLAGS := -ffast-math -O3 -march=native -ffast-math -flto -lm -mavx2 -mfma
-DEBUG_FLAGS :=  -Wall -Wextra -O0 -g -lm -mavx2 -mfma
+OPTIMIZATION_FLAGS := -ffast-math -O3 -march=native -ffast-math -flto -lm -mavx2 -mfma -D__AVX2__
+DEBUG_FLAGS :=  -Wall -Wextra -O0 -g -lm -march=native -mavx2 -mfma -D__AVX2__
 NAME := libvtrace.so
 
 .PHONY: all debug release benchmark debugTest clean
@@ -26,5 +26,3 @@ clean:
 
 debug:
 	$(CC) ./src/*.c $(LIB_FLAGS) $(DEBUG_FLAGS) -o ./bin/$(NAME)
-
-

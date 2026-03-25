@@ -4,7 +4,13 @@
 __attribute__((constructor)) static void vtrace_init(void)
 {
     printf("okay constructor gets called!\n");
-    // instaniate
+
+    
+    #ifdef __AVX2__
+    printf("AVX2 YES\n");
+    #else
+    printf("AVX2 NO\n");
+    #endif
 
     GRAPH_TESTS();
     HEAP_TESTS();
@@ -50,14 +56,14 @@ void prune_neighbours(hnswContext *ctx, hnswNode *node, int32 layer, int32 max)
     buffer_reset(out);
 
     int32 oldCount = node->numNeigbours[layer];
-
+    #ifdef DEBUG
     if (oldCount > maxCapacity)
     {
         printf("OLDCOUNT CORRUPT: node=%ld layer=%d oldCount=%d maxCapacity=%d\n",
                node->id, layer, oldCount, maxCapacity);
         abort();
     }
-
+    #endif
     // -------------------------------------------------
     // 1. Collect all current neighbors as candidates
     // -------------------------------------------------
@@ -91,14 +97,14 @@ void prune_neighbours(hnswContext *ctx, hnswNode *node, int32 layer, int32 max)
         int32 oldID = node->neigbours[off + i];
         hnswNode *other = getNodeById(g, oldID);
 
-        int32 off2 = layer_offset(g, layer);
+        
 
         for (int32 k = 0; k < other->numNeigbours[layer];)
         {
-            if (other->neigbours[off2 + k] == node->id)
+            if (other->neigbours[off + k] == node->id)
             {
-                other->neigbours[off2 + k] =
-                    other->neigbours[off2 + (--other->numNeigbours[layer])];
+                other->neigbours[off + k] =
+                    other->neigbours[off + (--other->numNeigbours[layer])];
             }
             else
             {
@@ -117,11 +123,7 @@ void prune_neighbours(hnswContext *ctx, hnswNode *node, int32 layer, int32 max)
 
         node->neigbours[off + node->numNeigbours[layer]++] = nid;
 
-        if (node->numNeigbours[layer] > max)
-        {
-            HNSW_LOG("OKAY FOUND THE DIRTY LITTLE BASTARD");
-            abort();
-        }
+     
     }
 
     // -------------------------------------------------
@@ -130,13 +132,13 @@ void prune_neighbours(hnswContext *ctx, hnswNode *node, int32 layer, int32 max)
     for (int i = 0; i < selected->size; i++)
     {
         hnswNode *other = getNodeById(g, selected->data[i].id);
-        int32 off2 = layer_offset(g, layer);
+        
         if(other->id == node->id) continue;
         // check existence  
         int exists = 0;
         for (int j = 0; j < other->numNeigbours[layer]; j++)
         {
-            if (other->neigbours[off2 + j] == node->id)
+            if (other->neigbours[off + j] == node->id)
             {
                 exists = 1;
                 break;
@@ -147,28 +149,24 @@ void prune_neighbours(hnswContext *ctx, hnswNode *node, int32 layer, int32 max)
         {
             if (other->numNeigbours[layer] < max)
             {
-                other->neigbours[off2 + other->numNeigbours[layer]++] = node->id;
+                other->neigbours[off + other->numNeigbours[layer]++] = node->id;
             }
         }
     }
 
-    if (node->id == 2 && layer == 0)
-    {
-        printf("AFTER PRUNE node=2 layer=0 count=%d\n", node->numNeigbours[layer]);
-    }
-
-    // am Ende von prune_neighbours, nach Schritt 4
-    for (int32 i = 0; i < node->numNeigbours[layer]; i++)
-    {
+    
+    #ifdef DEBUG
+    // ich veriele meinen verstand...
+   printf("okay debug defined!!!!")
         if (node->numNeigbours[layer] > max)
         {
             printf("PRUNE FAILED: node=%d layer=%d count=%d max=%d\n",
                    node->id, layer, node->numNeigbours[layer], max);
             abort();
         }
-    }
-
-    // und check alle reverse-edge empfänger
+    
+    
+    
     for (int32 i = 0; i < selected->size; i++)
     {
         hnswNode *other = getNodeById(g, selected->data[i].id);
@@ -180,6 +178,7 @@ void prune_neighbours(hnswContext *ctx, hnswNode *node, int32 layer, int32 max)
             abort();
         }
     }
+    #endif
 }
 
 void connect_bidirectional(hnswContext *ctx, hnswNode *a, hnswNode *b, int32 layer)
