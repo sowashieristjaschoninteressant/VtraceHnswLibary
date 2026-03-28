@@ -2,5 +2,6 @@
     "files.associations": {
         "vtracecommon.h": "c",
         "hnsw_public.h": "c"
-    }
+    },
+    "C_Cpp.default.compilerPath": "/usr/bin/gcc"
 }

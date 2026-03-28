@@ -1,9 +1,8 @@
-
-
 #include "hnsw_public.h"
 
-
-#define VTRACE_TESTS
+#include <stdlib.h>
+#include <stdio.h>
+#include <stdint.h>
 
 struct Dataset
 {
@@ -42,7 +41,7 @@ Dataset load_fvecs(const char *path)
     ds.data = malloc(ds.n * dim * sizeof(float));
     assert(ds.data);
     for (int i = 0; i < ds.n; i++)
-    {   
+    {
         fread(&dim, 4, 1, f);
         fread(ds.data + i * dim, 4, dim, f);
     }
@@ -83,7 +82,7 @@ void showTime(struct timer *time)
     printf("Time taken: %.6f seconds\n", time->elapsed);
 }
 
- double getElapsed(struct timer *t)
+double getElapsed(struct timer *t)
 {
 
     return t->elapsed;
@@ -146,20 +145,25 @@ FILE *create_file(char *path)
 }
 
 /*1. load index 2. setup timer 3. */
-void benchmark_insertion(int id)
+void benchmark_insertion(int id, const char *dataset_path)
 {
+
+    char base_path[256];
+
+    snprintf(base_path, sizeof(base_path), "%s_base.fvecs", dataset_path);
+
     // HNSW* graph = hnsw_init()
     char filename[256]; // make sure it's big enough
     snprintf(filename, sizeof(filename), "benchmark_insertion_%d.csv", id);
 
     FILE *filep = create_file(filename);
-    Dataset ds = load_fvecs("./benchmark/datasets/sift/sift_base.fvecs");
+    Dataset ds = load_fvecs(base_path);
     struct timer t;
     const int ef = 100;
     const int M = 12;
     fprintf(filep, "dimension,M,ef_construction,build_time_ms,avg_insert_us,vec_count\n");
 
-    for (int ef = 500; ef <= 500; ef += 50)
+    for (int ef = 50; ef <= 500; ef += 50)
     {
 
         HNSW *hnsw = hnsw_init(ef);
@@ -191,116 +195,134 @@ void benchmark_insertion(int id)
     destroy_dataset(ds);
 }
 
-void benchmark_search(int id)
-{   
+void benchmark_search(int id, const char *dataset_path)
+{
+
+    char base_path[256];
+    char query_path[256];
+
+    snprintf(base_path, sizeof(base_path), "%s_base.fvecs", dataset_path);
+    snprintf(query_path, sizeof(query_path), "%s_query.fvecs", dataset_path);
+
     char filename[256]; // make sure it's big enough
-    snprintf(filename, sizeof(filename), "benchmark_search_%d.csv", id);
+    snprintf(filename, sizeof(filename), "vtrace_benchmark_search_%d.csv", id);
     FILE *filep = create_file(filename);
 
     fprintf(filep, "N,dimension,M,ef_search,avg_latency_ms,qps, recall, numQueries\n");
     printf("okay loading vecs!\n");
     // first load the base vecs
-    Dataset baseV = load_fvecs("./benchmark/datasets/sift/sift_base.fvecs");
+    Dataset baseV = load_fvecs(base_path);
     const int ef = 200;
     const int M = 10;
+    const int K = 10;
+
     HNSW *hnsw = hnsw_init(ef);
     vec tmp;
 
     tmp.dim = baseV.dim;
     for (int i = 0; i < baseV.n; i++)
-    {   
+    {
         float *v = baseV.data + i * baseV.dim;
         tmp.vec = v;
-       
+
         hnsw_insert(hnsw, &tmp, M);
     }
 
     destroy_dataset(baseV);
+
+    int *groundtruth = malloc(sizeof(int) * K * baseV.n);
+
     // load queries
-    Dataset qv = load_fvecs("./benchmark/datasets/sift/sift_query.fvecs");
-    
+    Dataset qv = load_fvecs(query_path);
+    // precompute groundtrhuth
+    int *gt_tmp = malloc(sizeof(int) * K);
+    for (int i = 0; i < qv.n; i++)
+    {
+        tmp.vec = qv.data + i * qv.dim;
+        hnsw_linear(hnsw, &tmp, K, gt_tmp);
+        memcpy(groundtruth + i * K, gt_tmp, sizeof(int) * K);
+    }
+    free(gt_tmp);
+
     tmp.dim = qv.dim;
     struct timer t;
 
     double totalLatency = 0.0;
     int correct = 0;
     int numQueries = qv.n;
-    const int K = 10;
+
     double recall;
-    
+
     HNSW_LOG("Okay allocating Stuff ");
-    hnswResult* tempRset = malloc(sizeof(hnswResult) * numQueries);
+    hnswResult *tempRset = malloc(sizeof(hnswResult) * numQueries);
     assert(tempRset);
+    int ef_values[] = {10, 20, 40, 60, 80, 100, 150, 200, 300, 400, 500};
+    int num_ef = 11;
 
-    // warmup 
-    for(int i = 0; i < 1000; i++){
-    tmp.vec = qv.data + (i % numQueries) * qv.dim;
-    hnsw_search(hnsw, &tmp, K, &tempRset[0]);
-}
-    
-    timer_start(&t);
-    for(int i = 0; i < numQueries; i++){
-     tmp.vec = qv.data + i * qv.dim;
-     hnsw_search(hnsw,&tmp,K, &tempRset[i]);
+    for (int e = 0; e < num_ef; e++)
+    {
+        int ef_search = ef_values[e];
+        hnsw_set_ef(hnsw, ef_search);
 
-    }
-    timer_stop(&t);
+        // warmup
+        for (int i = 0; i < 1000; i++)
+        {
+            tmp.vec = qv.data + (i % qv.n) * qv.dim;
+            hnsw_search(hnsw, &tmp, K, &tempRset[0]);
+        }
 
-    // get recall
-    int* bestIds = malloc(sizeof(int) * K);
-    for(int i = 0; i < numQueries; i++){
-        tmp.vec = qv.data + i * qv.dim;
-        hnsw_linear(hnsw,&tmp,K, bestIds);
-        // check distances 
+        // timed search
+        timer_start(&t);
+        for (int i = 0; i < qv.n; i++)
+        {
+            tmp.vec = qv.data + i * qv.dim;
+            hnsw_search(hnsw, &tmp, K, &tempRset[i]);
+        }
+        timer_stop(&t);
 
-       
-        for(int j = 0; j < K; j++){
+        // recall
+        int correct = 0;
+        for (int i = 0; i < qv.n; i++){
+            for (int j = 0; j < K; j++){
+                for (int k = 0; k < K; k++){
+                    if (tempRset[i].ids[k] == groundtruth[i * K + j])
+                    {
+                        correct++;
+                        break;
+                    }
+                }
+            }
+        }
             
-            for(int k = 0; k < K; k++){
-           if(tempRset[i].ids[k] == bestIds[j]){
-            correct++;
-            break;
-         }
-             }
-        }
-        }
-        
+        recall = (double)correct / (numQueries * K);
 
-     recall = (double) correct / (numQueries * K);
+        double QPS = numQueries / (t.elapsed / 1000.0);
+        // write CSV
+        fprintf(filep, "%d,%d,%d,%d,%.6f,%.2f,%.3f,%d\n",
+                numQueries, tmp.dim, M, ef_search,
+                t.elapsed / numQueries, // avg latency ms
+                QPS,                    // QPS
+                recall,
+                numQueries);
+    }
 
-   double QPS = numQueries / (t.elapsed / 1000.0);
-    // write CSV
-    fprintf(filep, "%d,%d,%d,%d,%.6f,%.2f,%.3f,%d\n",
-            numQueries, tmp.dim, M, ef,
-            t.elapsed / numQueries, // avg latency ms
-            QPS,      // QPS
-            recall,
-            numQueries);
-    free(bestIds);
-    free(tempRset);
-    destroy_dataset(qv);
-    hnsw_free(hnsw);
-    fclose(filep);
+        free(tempRset);
+        destroy_dataset(qv);
+        hnsw_free(hnsw);
+        fclose(filep);
 }
 
-int main()
-{
+    int main()
+    {
 
 #ifdef __AVX2__
-    printf("AVX2 is defined in benchmark.c\n");
+        printf("AVX2 is defined in benchmark.c\n");
 #else
-    printf("AVX2 NOT defined in benchmark.c\n");
+        printf("AVX2 NOT defined in benchmark.c\n");
 #endif
 
-     for(int i = 0; i < 1;i++){
-        printf("benchmark insertion round: %i\n", i);
-        benchmark_insertion(i);
-    }
-
-
-    for(int i = 0; i < 5;i++){
-        printf("benchmark round: %i\n", i);
-        benchmark_search(i);
-    }
-
-}
+        
+        
+        benchmark_search(3, "./benchmark/datasets/gist/gist");
+        
+        }

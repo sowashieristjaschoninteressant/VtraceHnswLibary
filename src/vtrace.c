@@ -65,3 +65,9 @@ void hnsw_linear(HNSW* g, vec *q, int K, int *out_ids){
     
     return NN_SIMPLE_LINEAR(g, q,K,out_ids);
 }
+
+
+
+void hnsw_set_ef(HNSW* g, int ef){
+    g->efsearch = ef;
+}

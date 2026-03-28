@@ -396,7 +396,7 @@ void K_NN_SEARCH(hnswContext *ctx, vec q, int32 K, int32 efsearch, Heap *out)
     hnswNode *entryPoint = getNodeById(g, g->entrypointID);
     sortedBuffer *buffer;
 
-    for (int32 layer = g->maxLayer - 1; layer > 0; layer--)
+    for (int32 layer = g->maxLayer; layer > 0; layer--)
     {
         buffer = SEARCH_LAYER(ctx, entryPoint, q, 1, layer);
 

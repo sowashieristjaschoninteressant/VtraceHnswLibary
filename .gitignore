@@ -1,4 +1,3 @@
 bin/*
-benchmark/*.csv
+benchmark/hnswlib
 benchmark/datasets/*
-*.csv
