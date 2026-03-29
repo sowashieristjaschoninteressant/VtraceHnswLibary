@@ -1,4 +1,4 @@
-N,dimension,M,ef_search,avg_latency_ms,qps, recall, numQueries
+N,dimension,M,ef_search,avg_latency_ms,qps,recall, numQueries
 100,128,10,10,0.024945,40088.19,0.903,100
 100,128,10,20,0.041846,23897.14,0.955,100
 100,128,10,40,0.065494,15268.57,0.984,100
