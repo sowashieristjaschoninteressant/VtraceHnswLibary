@@ -315,8 +315,7 @@ int main()
 #endif
    
     
-    benchmark_insertion_faisslib(1,"./benchmark/datasets/siftsmall/siftsmall");
-    benchmark_searchfaisslib(1, "./benchmark/datasets/siftsmall/siftsmall");
+  
    
     benchmark_insertion_faisslib(2,"./benchmark/datasets/sift/sift");
     benchmark_searchfaisslib(2, "./benchmark/datasets/sift/sift");
