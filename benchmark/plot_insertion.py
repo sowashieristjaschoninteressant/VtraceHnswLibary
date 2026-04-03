@@ -7,7 +7,7 @@ import seaborn as sns
 
 def main():
  datasets = ["siftsmall","gist", "sift"]
- libs = ["hnswlib", "vtrace"]
+ libs = ["hnswlib", "vtrace", "faiss"]
 
 
  colors = {"hnswlib":"blue", "faiss":"red", "vtrace":"green"}
@@ -19,12 +19,16 @@ def main():
 
     data={}
     for lib in libs:
+       if lib == "faiss" and dataset == 'gist':
+          continue
        path=f"./csv/{lib}/{lib}_benchmark_insertion_{dataset}.csv"
        print(f"load: {path}")
        data[lib] = pd.read_csv(path)
  
     plt.subplot(1,3,i)
     for lib in libs:
+       if lib == "faiss" and dataset == 'gist':
+          continue
        plt.plot(data[lib]['ef_construction'],data[lib]['avg_insert_us'], marker=markers[lib],color=colors[lib], label=lib)
           
     plt.xlabel("ef_construction")
