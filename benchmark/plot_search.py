@@ -10,6 +10,8 @@ def search_plot(datasets, libs, colors, markers):
     
     data = {}
     for lib in libs:
+        if lib == "faiss" and dataset == 'gist':
+           continue
         path=f"./csv/{lib}/{lib}_benchmark_search_{dataset}.csv"
         print(f"load: {path}")
         data[lib] = pd.read_csv(path)
@@ -17,6 +19,8 @@ def search_plot(datasets, libs, colors, markers):
    
     plt.subplot(1,3,1)
     for lib in libs:
+        if lib == "faiss" and dataset == 'gist':
+           continue
         plt.plot(data[lib]['ef_search'], data[lib]['avg_latency_ms'], 
                  marker=markers[lib], color=colors[lib], label=lib)
     plt.xlabel("ef_search")
@@ -28,6 +32,8 @@ def search_plot(datasets, libs, colors, markers):
    
     plt.subplot(1,3,2)
     for lib in libs:
+        if lib == "faiss" and dataset == 'gist':
+           continue
         plt.plot(data[lib]['ef_search'], data[lib]['recall'], 
                  marker=markers[lib], color=colors[lib], label=lib)
     plt.xlabel("ef_search")
@@ -38,6 +44,8 @@ def search_plot(datasets, libs, colors, markers):
    
     plt.subplot(1,3,3)
     for lib in libs:
+        if lib == "faiss" and dataset == 'gist':
+           continue
         plt.plot(data[lib]['ef_search'], data[lib]['qps'], 
                  marker=markers[lib], color=colors[lib], label=lib)
     plt.xlabel("ef_search")
@@ -80,7 +88,7 @@ def recall_QPS(datasets, libs,colors, markers):
 
 def main():
  datasets = ["sift", "siftsmall", "gist"]
- libs = ["hnswlib", "vtrace"]
+ libs = ["hnswlib", "vtrace", "faiss"]
 
  
  colors = {"hnswlib":"blue", "faiss":"red", "vtrace":"green"}
