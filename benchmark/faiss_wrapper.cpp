@@ -7,7 +7,7 @@ extern "C" {
     #include "faiss_wrapper.h"
 
     FaissIndex* faiss_init(int dim, int M, int ef_construction){
-        faiss::IndexHNSWFlat* index = new faiss::IndexHNSWFlat(dim, M);
+        faiss::IndexHNSWFlat* index = new faiss::IndexHNSWFlat(dim, M, faiss::METRIC_L2);
         index->hnsw.efConstruction = ef_construction;
         return (FaissIndex*)index;
     }
