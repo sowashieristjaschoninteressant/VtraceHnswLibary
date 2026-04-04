@@ -37,7 +37,7 @@ float cosine_distance(vec *__restrict a, vec *__restrict b)
 
 
 
-#ifdef ARM_NEON
+#ifdef __ARM_NEON
 float cosine_distance_neon(vec *__restrict a, vec *__restrict b)
 {
     uint32_t i = 0;
@@ -353,15 +353,15 @@ float cosine_distance_avx2(const vec *__restrict a, const vec *__restrict b)
 #endif
 float l2_sq_distance_fast(const vec *__restrict a,const vec *__restrict b){
     
-  #ifdef ARM_NEON
-     printf("okaz! l2sq distance avx2 gets called!\n");
+  #ifdef __ARM_NEON
+     
     return l2_sq_distance_neon(a,b);
   #elif defined(__AVX2__)
   
   
     return l2_sq_distance_avx2(a,b);
   
-  #elif
+  #else 
    
     return l2_sq_distance(a,b);
   #endif
