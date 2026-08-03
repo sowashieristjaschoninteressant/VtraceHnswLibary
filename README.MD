@@ -1,4 +1,4 @@
-# vtrace – Approximate Nearest Neighbor Benchmark Suite
+# vtrace – Approximate Nearest Neighbor
 
 `vtrace` is a high-performance C-based library and benchmarking framework for evaluating Approximate Nearest Neighbor (ANN) search algorithms.
 It includes a custom HNSW implementation and provides direct comparisons against FAISS and hnswlib via lightweight C/C++ wrappers.
