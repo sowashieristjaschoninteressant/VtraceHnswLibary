@@ -14,7 +14,6 @@ typedef struct
   int32 level;
   int64 *neigbours;
   int32 *numNeigbours;
-  vec v;
 } node;
 
 typedef node hnswNode;
@@ -76,6 +75,8 @@ struct Graph
   int64 maxHeapSize;
 
   int64 entrypointID;
+  int32 dim;
+  float32 *vecs;
   node *nodes;
   hnswContextPool pool;// manages reusable per-operation
   hnsw_chainAllocator* alloc;
@@ -88,7 +89,7 @@ extern void releaseContext(Graph *g, hnswContext *ctx);
 extern void initContextPool(Graph *g, int32 capacity);
 typedef Graph VT_graph;
 extern void makeNode(Graph* g, node *node, vec v, int64 id, int32 nodeLevel, uint32 maxNeigbours, int32 mMax0);
-extern VT_graph *initializeGraph(uint32 maxLayer, uint32 efConstruction, uint32 efSearch, uint32 M_maxNeigbours, uint32 maxNodeCount);
+extern Graph *initializeGraph(uint32 maxLayer, uint32 efConstruction, uint32 efSearch, uint32 M_maxNeigbours, uint32 maxNodeCount, int32 dim);
 extern void uninitializeGraph(VT_graph *graph);
 extern void addNeigbour(node *target, uint32 neighbourId, uint32 layer, uint32 M_MAXneigbours);
 extern void expandgraph(Graph *graph);

@@ -1,7 +1,7 @@
 
 #include "graph.h"
 
-Graph *initializeGraph(uint32 maxLayer, uint32 efConstruction, uint32 efSearch, uint32 M_maxNeigbours, uint32 maxNodeCount)
+Graph *initializeGraph(uint32 maxLayer, uint32 efConstruction, uint32 efSearch, uint32 M_maxNeigbours, uint32 maxNodeCount, int32 dim)
 {
 
     Graph *graph = malloc(sizeof(VT_graph));
@@ -19,17 +19,25 @@ Graph *initializeGraph(uint32 maxLayer, uint32 efConstruction, uint32 efSearch, 
     graph->maxLayer = maxLayer;
     graph->maxNodeCount = maxNodeCount;
     graph->maxHeapSize = efConstruction * (efConstruction / 2);
-
+    graph->dim = dim;
     graph->alloc = init_chainArena( 10,DEFAULT_CHUNK_SIZE);
 
     graph->nodes = malloc(sizeof(hnswNode) * graph->maxNodeCount);
     if (!graph->nodes)
     {
-        HNSW_LOG("cannot allocate graph nodes out of mem?\n");
+        HNSW_LOG("cannot allocate graph nodes out of mem?");
         abort();
     }
-    graph->count = 0;
 
+    graph->vecs = malloc((sizeof(float32) * dim) * graph->maxNodeCount);
+
+    if(!graph->vecs){
+        HNSW_LOG("cannot allocate vectorarray out of memory?");
+        abort();
+    }
+
+
+    graph->count = 0;
     graph->entrypointID = -1;
 
     initContextPool(graph, 5);
@@ -47,11 +55,6 @@ void makeNode( Graph* g, node *node, vec v, int64 id, int32 nodeLevel, uint32 ma
     node->id = id;
     node->level = nodeLevel;
 
-    node->v.dim = v.dim;
-    
-    node->v.vec = graph_alloc(g, sizeof(float32) * v.dim, alignof(float32));
-    memcpy(node->v.vec, v.vec, sizeof(float32) * v.dim);
-
     uint32 allocationLevel = nodeLevel + 1;
     uint32 capLayer0 = mMax0 * 2;       // layer0 overprovision +1
     uint32 capUpper = maxNeigbours * 2; // layer>0 overprovision +1
@@ -62,6 +65,9 @@ void makeNode( Graph* g, node *node, vec v, int64 id, int32 nodeLevel, uint32 ma
     node->numNeigbours = graph_alloc(g, sizeof(int32) * allocationLevel, alignof(int32));
     
     memset(node->numNeigbours, 0, sizeof(uint32) * allocationLevel);
+
+    memcpy(g->vecs + (id * g->dim), v.vec, sizeof(float32) * g->dim);
+
 }
 
 hnswContext *acquireContext(Graph *g)
@@ -158,6 +164,7 @@ void expandgraph(Graph *graph)
     uint32 newMaxNodeCount = graph->maxNodeCount * 2;
 
     hnswNode *nodes = realloc(graph->nodes, sizeof(hnswNode) * newMaxNodeCount);
+    float32 *vecs = realloc(graph->vecs, (sizeof(float32) * graph->dim) * newMaxNodeCount); 
 
     hnswContextPool pool = graph->pool;
 
@@ -166,12 +173,13 @@ void expandgraph(Graph *graph)
         resizeVisited(&graph->pool.pool[i], newMaxNodeCount);
     }
 
-    if (!nodes)
+    if (!nodes || !vecs)
     {
         HNSW_LOG("cannot allocate more nodes out of memory? expandGraph\n");
         abort();
     }
 
+    graph->vecs = vecs;
     graph->nodes = nodes;
     graph->maxNodeCount = newMaxNodeCount;
 }
@@ -197,24 +205,12 @@ visitedList initvList(size_t size)
     return list;
 }
 
-vec makeANNVec(Graph* g,uint32 dim, float* values){
-    
-    vec v;
-    v.vec = graph_alloc(g,sizeof(float32) * dim, alignof(dim));
-    HNSW_ASSERT(v.vec);
-    v.dim = dim;
-    memcpy(v.vec, values, sizeof(float32) * dim);
-
-    return v;
-    
-
-
-}
 
 void uninitializeGraph(VT_graph *graph)
 {
 
     free(graph->nodes);
+    free(graph->vecs);
     chainArena_destroy(graph->alloc);
     free(graph);
 }
