@@ -6,7 +6,7 @@
 LIBARY INCLUDES
 =====================
 */
-
+#define _GNU_SOURCE
 #include <stdlib.h>
 #include <stdio.h>
 #include "string.h"
@@ -60,5 +60,14 @@ DEBUG / assertions
 #else
 #define HNSW_ASSERT(x) ((void)0)
 #endif
+
+#if defined(_MC_VER) || defined(__MINGW32__)
+// Windows nutzt: void* _aligned_malloc(size_t size, size_t alignment)
+    #define ALIGN_MALLOC(totalVecBytes, align) _aligned_malloc(totalVecBytes, align)
+#elif defined(_GNU_SOURCE)
+    #define ALIGN_MALLOC( p,totalVecBytes, align) posix_memalign((void**)p,totalVecBytes,align)
+#endif 
+
+
 
 #endif

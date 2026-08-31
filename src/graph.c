@@ -30,7 +30,7 @@ Graph *initializeGraph(uint32 maxLayer, uint32 efConstruction, uint32 efSearch, 
     }
 
     graph->vecs = malloc((sizeof(float32) * dim) * graph->maxNodeCount);
-
+    pos
     if(!graph->vecs){
         HNSW_LOG("cannot allocate vectorarray out of memory?");
         abort();
@@ -48,7 +48,7 @@ Graph *initializeGraph(uint32 maxLayer, uint32 efConstruction, uint32 efSearch, 
 
 
 
-void makeNode( Graph* g, node *node, vec v, int64 id, int32 nodeLevel, uint32 maxNeigbours, int32 mMax0)
+void makeNode( Graph* g, node *node,float32* vec, int64 id, int32 nodeLevel, uint32 maxNeigbours, int32 mMax0)
 {
     // because layer 1 will be saved in array slot 0 but when i pass 0 into the allocation func it will abort
 
@@ -66,7 +66,7 @@ void makeNode( Graph* g, node *node, vec v, int64 id, int32 nodeLevel, uint32 ma
     
     memset(node->numNeigbours, 0, sizeof(uint32) * allocationLevel);
 
-    memcpy(g->vecs + (id * g->dim), v.vec, sizeof(float32) * g->dim);
+    memcpy(g->vecs + (id * g->dim), vec, sizeof(float32) * g->dim);
 
 }
 

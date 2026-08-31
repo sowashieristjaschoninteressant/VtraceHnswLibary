@@ -8,7 +8,7 @@ typedef float (*distance_func) (const vec* __restrict a, const vec* __restrict b
 
  float l2_sq_distance( const vec* __restrict a,  const vec* __restrict b);
  float cosine_distance(vec* __restrict a, vec* __restrict b);
- float l2_sq_distance_fast(const vec *__restrict a,const vec *__restrict b);
+ float l2_sq_distance_fast(const float32 *__restrict a,const float32 *__restrict b, int32 dim);
 
 #ifdef __ARM_NEON
 #include "arm_neon.h"
@@ -16,13 +16,11 @@ typedef float (*distance_func) (const vec* __restrict a, const vec* __restrict b
  // arm neon smid implementations
  float l2_sq_distance_neon(const vec* __restrict a, const vec* __restrict b);
  float l2_sq_distance_neon_128v(const vec* __restrict a, const vec* __restrict b);
- float l2_sq_distance_neon_128_unroll(const vec *__restrict a, const vec *__restrict b);
 #elif defined(__AVX2__)
 #include <immintrin.h>  
 
- float l2_sq_distance_avx2(const vec *__restrict a, const vec *__restrict b);
+ float l2_sq_distance_avx2(const vec *__restrict a, const vec *__restrict b, int32 dim);
  float l2_sq_distance_avx2_128v(const vec *__restrict a, const vec *__restrict b);
- float l2_sq_distance_avx2_unroll(const vec *__restrict a, const vec *__restrict b);
  float cosine_distance_avx2(const vec *__restrict a, const vec *__restrict b);
 
 

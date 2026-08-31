@@ -88,7 +88,7 @@ extern hnswContext *acquireContext(Graph *g);
 extern void releaseContext(Graph *g, hnswContext *ctx);
 extern void initContextPool(Graph *g, int32 capacity);
 typedef Graph VT_graph;
-extern void makeNode(Graph* g, node *node, vec v, int64 id, int32 nodeLevel, uint32 maxNeigbours, int32 mMax0);
+extern void makeNode(Graph* g, node *node, float32* vec, int64 id, int32 nodeLevel, uint32 maxNeigbours, int32 mMax0);
 extern Graph *initializeGraph(uint32 maxLayer, uint32 efConstruction, uint32 efSearch, uint32 M_maxNeigbours, uint32 maxNodeCount, int32 dim);
 extern void uninitializeGraph(VT_graph *graph);
 extern void addNeigbour(node *target, uint32 neighbourId, uint32 layer, uint32 M_MAXneigbours);
@@ -96,7 +96,9 @@ extern void expandgraph(Graph *graph);
 
 extern vec makeANNVec(Graph* g,uint32 dim, float* values);
 
-
+HNSW_INLINE float* getVec(Graph* g, int32 id){
+  return &g->vecs[id];
+}
 
 HNSW_INLINE void* graph_alloc(Graph*g, size_t size, uint32 alignment){
     return chainArenaAlloc(g->alloc,size, alignment);

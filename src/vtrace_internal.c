@@ -51,6 +51,7 @@ void prune_neighbours(hnswContext *ctx, hnswNode *node, int32 layer, int32 max)
     sortedBuffer *buf = ctx->pruneBuffer;
     sortedBuffer *out = ctx->tempbuf;
 
+    float32* nodeV = getVec(g, node->id); 
 
     buffer_reset(buf);
     buffer_reset(out);
@@ -70,11 +71,11 @@ void prune_neighbours(hnswContext *ctx, hnswNode *node, int32 layer, int32 max)
     for (int32 i = 0; i < oldCount; i++)
     {
         int32 nid = node->neigbours[off + i];
-        hnswNode *n = getNodeById(g, nid);
-
+        hnswNode* n = getNodeById(g, nid);
+        float32* nV = getVec(g, n->id);
         heapItem item;
         item.id = nid;
-        item.dist =l2_sq_distance_fast(&node->v, &n->v);
+        item.dist = l2_sq_distance_fast(nodeV, nV, g->dim);
 
         push_buffer(buf, &item);
     }
@@ -202,7 +203,7 @@ void connect_bidirectional(hnswContext *ctx, hnswNode *a, hnswNode *b, int32 lay
         b->neigbours[off + b->numNeigbours[layer]++] = a->id;
 }
 
-void INSERT(Graph *graph, vec vec, int32 M, uint32 efConstruction, uint32 ml)
+void INSERT(Graph *graph, float32* vec, int32 M, uint32 efConstruction, uint32 ml)
 {
     hnswContext *ctx = acquireContext(graph);
 
@@ -281,11 +282,12 @@ Heap *SELECT_NEIGBOURS_SIMPLE(sortedBuffer *c, uint32 M, Heap *out)
     return out;
 }
 
-sortedBuffer *SEARCH_LAYER(hnswContext *ctx, hnswNode *entryPoint, vec q, uint32 ef, int32 lc)
+sortedBuffer *SEARCH_LAYER(hnswContext *ctx, hnswNode *entryPoint, float32* q, uint32 ef, int32 lc)
 {
     const int off = layer_offset(ctx->g, lc);
     Heap *c = ctx->candidateHeap; // min heap candidate list
     Heap *w = ctx->resultHeap;    // closest results
+    const int dim = ctx->g->dim;
 
     sortedBuffer *buffer = ctx->buffer;
 
@@ -296,7 +298,7 @@ sortedBuffer *SEARCH_LAYER(hnswContext *ctx, hnswNode *entryPoint, vec q, uint32
 
     markNodeVisited(ctx, entryPoint->id);
 
-    float32 epDistance = l2_sq_distance_fast(&entryPoint->v, &q);
+    float32 epDistance = l2_sq_distance_fast(getVec(ctx->g, entryPoint->id), q, dim);
 
     heap_insert(c, entryPoint->id, epDistance, NULL);
     heap_insert(w, entryPoint->id, epDistance, NULL);
@@ -326,8 +328,8 @@ sortedBuffer *SEARCH_LAYER(hnswContext *ctx, hnswNode *entryPoint, vec q, uint32
             {
 
                 markNodeVisited(ctx, neigbour->id);
-
-                float32 dist = l2_sq_distance_fast(&neigbour->v, &q);
+                float32* neigVec = getVec(ctx->g, neigbour->id);
+                float32 dist = l2_sq_distance_fast(neigVec, q, dim);
 
                 if (dist < heapPeek(w).dist || w->size < ef)
                 {
@@ -348,25 +350,32 @@ sortedBuffer *SEARCH_LAYER(hnswContext *ctx, hnswNode *entryPoint, vec q, uint32
     return buffer;
 }
 
-sortedBuffer *SELECT_NEIGBOURS_HEURISTIC(hnswContext *ctx, hnswNode *baseElement, sortedBuffer *candidates, sortedBuffer *out, int32 M)
+sortedBuffer* SELECT_NEIGBOURS_HEURISTIC(hnswContext *ctx, hnswNode *baseElement, sortedBuffer *candidates, sortedBuffer *out, int32 M)
 {
     Graph *g = ctx->g;
-    sortedBuffer *result = out;
+    const int32 dim = g->dim;
+    const int32 baseID = baseElement->id;
+    const float32* baseV = getVec(g, baseID);
 
+    sortedBuffer *result = out;
+    
     for (int i = 0; i < candidates->size; i++)
     {
         heapItem c = candidates->data[i];
 
-        if(c.id == baseElement->id) continue; 
+        if(c.id == baseID) continue; 
 
-        hnswNode *cand = getNodeById(g, c.id);
-        float d_cd = l2_sq_distance_fast(&baseElement->v, &cand->v);
+         hnswNode *cand = getNodeById(g, c.id);
+         float32* candV = getVec(g, cand->id);
+
+        float d_cd = l2_sq_distance_fast(baseV, candV, dim);
 
         int8 good = 1;
         for (int j = 0; j < result->size; j++)
         {
             hnswNode *r = getNodeById(g, result->data[j].id);
-            float d_cr = l2_sq_distance_fast(&cand->v, &r->v);
+            float32* rV = getVec(g, r->id);
+            float d_cr = l2_sq_distance_fast(candV, rV, dim);
 
             // heuristic condition
             if (d_cr < d_cd)
@@ -389,7 +398,7 @@ sortedBuffer *SELECT_NEIGBOURS_HEURISTIC(hnswContext *ctx, hnswNode *baseElement
     return result;
 }
 
-void K_NN_SEARCH(hnswContext *ctx, vec q, int32 K, int32 efsearch, Heap *out)
+void K_NN_SEARCH(hnswContext *ctx, float32* q, int32 K, int32 efsearch, Heap *out)
 {
     Graph *g = ctx->g;
 
@@ -408,7 +417,7 @@ void K_NN_SEARCH(hnswContext *ctx, vec q, int32 K, int32 efsearch, Heap *out)
     SELECT_NEIGBOURS_SIMPLE( buffer, K, out);
 }
 
-void NN_SIMPLE_LINEAR(Graph *g, vec *q, int K, int *out_ids)
+void NN_SIMPLE_LINEAR(Graph *g, float32*q, int K, int *out_ids)
 {
     // just use a simple array and track worst
     float *best_dists = malloc(sizeof(float) * K);
@@ -422,7 +431,9 @@ void NN_SIMPLE_LINEAR(Graph *g, vec *q, int K, int *out_ids)
 
     for(int i = 0; i < g->count; i++){
         hnswNode *current = &g->nodes[i];
-        float dist = l2_sq_distance_fast(q, &current->v);
+        float32* currentV = getVec(g, current->id);
+
+        float dist = l2_sq_distance_fast(q, currentV, g->dim);
 
         // find worst in our current top K
         int worst_idx = 0;
