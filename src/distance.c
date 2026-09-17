@@ -153,20 +153,25 @@ float l2_sq_distance_neon_128v(const vec *__restrict a, const vec *__restrict b)
 float l2_sq_distance_avx2(const float32* __restrict a, const float32* __restrict b, int32 dim)
 {
     uint32_t i = 0;
-    __m256 sum_vec = _mm256_setzero_ps();
+    __m256 sum_vec0 = _mm256_setzero_ps();
+    __m256 sum_vec1 = _mm256_setzero_ps();
     float32 d = 0;
-    for (; i + 8 <= dim; i += 8)
+    for (; i + 16 <= (uint32_t)dim; i += 16)
     {
-        __m256 va   = _mm256_loadu_ps(a + i);
-        __m256 vb   = _mm256_loadu_ps(b + i);
-        __m256 diff = _mm256_sub_ps(va, vb);
-        sum_vec     = _mm256_fmadd_ps(diff, diff, sum_vec);
+        __m256 va0 = _mm256_loadu_ps(a + i);
+        __m256 vb0 = _mm256_loadu_ps(b + i);
+        __m256 va1 = _mm256_loadu_ps(a + i + 8);
+        __m256 vb1 = _mm256_loadu_ps(b + i + 8);
+        __m256 diff0 = _mm256_sub_ps(va0, vb0);
+        __m256 diff1 = _mm256_sub_ps(va1, vb1);
+        sum_vec0 = _mm256_fmadd_ps(diff0, diff0, sum_vec0);
+        sum_vec1 = _mm256_fmadd_ps(diff1, diff1, sum_vec1);
     }
 
-    float32 sum = hsum_avx(sum_vec);
+    float32 sum = hsum_avx(_mm256_add_ps(sum_vec0, sum_vec1));
 
     // scalar tail
-    for (; i < dim; i++)
+    for (; i < (uint32_t)dim; i++)
     {
         d = a[i] - b[i];
         sum += d * d;
@@ -253,6 +258,12 @@ float l2_sq_distance_fast(const float32 *__restrict a,const float32 *__restrict 
   
   #else 
    
-    return l2_sq_distance(a,b);
-  #endif
-}
+      float sum = 0.0f;
+      for (int32 i = 0; i < dim; i++)
+      {
+          float diff = a[i] - b[i];
+          sum += diff * diff;
+      }
+      return sum;
+    #endif
+  }

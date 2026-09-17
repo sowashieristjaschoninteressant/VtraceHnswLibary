@@ -1,6 +1,7 @@
 #ifndef VT_DISTANCE_H
 #define VT_DISTANCE_H
 
+#include "vtraceCommon.h"
 
 typedef struct vector vec;
 
@@ -19,7 +20,7 @@ typedef float (*distance_func) (const vec* __restrict a, const vec* __restrict b
 #elif defined(__AVX2__)
 #include <immintrin.h>  
 
- float l2_sq_distance_avx2(const vec *__restrict a, const vec *__restrict b, int32 dim);
+ float l2_sq_distance_avx2(const float32 *__restrict a, const float32 *__restrict b, int32 dim);
  float l2_sq_distance_avx2_128v(const vec *__restrict a, const vec *__restrict b);
  float cosine_distance_avx2(const vec *__restrict a, const vec *__restrict b);
 

@@ -97,7 +97,7 @@ extern void expandgraph(Graph *graph);
 extern vec makeANNVec(Graph* g,uint32 dim, float* values);
 
 HNSW_INLINE float* getVec(Graph* g, int32 id){
-  return &g->vecs[id];
+  return &g->vecs[(size_t)id * g->dim];
 }
 
 HNSW_INLINE void* graph_alloc(Graph*g, size_t size, uint32 alignment){

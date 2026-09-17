@@ -49,7 +49,7 @@ benchmark: release
 
 
 debugTest: debug
-	$(CC) ./debug/debug.c -L./bin -lvtrace $(HEADERS) $(DEBUG_FLAGS) -o ./bin/debug
+	$(CC) ./src/*.c ./debug/debug.c $(HEADERS) $(DEBUG_FLAGS) -o ./bin/debug
 
 clean:
 	rm -rf ./bin/*

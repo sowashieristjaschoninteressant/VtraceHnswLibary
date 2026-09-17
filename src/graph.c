@@ -30,7 +30,6 @@ Graph *initializeGraph(uint32 maxLayer, uint32 efConstruction, uint32 efSearch, 
     }
 
     graph->vecs = malloc((sizeof(float32) * dim) * graph->maxNodeCount);
-    pos
     if(!graph->vecs){
         HNSW_LOG("cannot allocate vectorarray out of memory?");
         abort();

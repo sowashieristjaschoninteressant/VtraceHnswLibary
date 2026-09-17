@@ -113,28 +113,6 @@ float32 *generateRandVecS(uint32 size, float32 min, float32 max)
     return farray;
 }
 
-vec createVecR(int dim)
-{
-    vec v;
-    v.dim = dim;
-    v.vec = generateRandVecS(dim, 0, 100000);
-
-    return v;
-}
-
-vec *genVecArray(int count, int dim)
-{
-    vec *vecs = malloc(sizeof(vec) * count);
-    assert(vecs);
-
-    for (int i = 0; i < count; i++)
-    {
-        vecs[i] = createVecR(dim);
-    }
-
-    return vecs;
-}
-
 FILE *create_file(char *path)
 {
 
@@ -166,17 +144,13 @@ void benchmark_insertion(int id, const char *dataset_path)
     for (int ef = 50; ef <= 500; ef += 50)
     {
 
-        HNSW *hnsw = hnsw_init(ef);
-
-        vec tmp;
-        tmp.dim = ds.dim;
+        HNSW *hnsw = hnsw_init(ef, ds.dim);
 
         timer_start(&t);
         for (int i = 0; i < ds.n; i++)
         {
             float *v = ds.data + i * ds.dim;
-            tmp.vec = v;
-            hnsw_insert(hnsw, &tmp, M);
+            hnsw_insert(hnsw, v, M);
         }
         timer_stop(&t);
 
@@ -216,21 +190,19 @@ void benchmark_search(int id, const char *dataset_path)
     const int M = 10;
     const int K = 10;
 
-    HNSW *hnsw = hnsw_init(ef);
-    vec tmp;
+    HNSW *hnsw = hnsw_init(ef, baseV.dim);
 
-    tmp.dim = baseV.dim;
     for (int i = 0; i < baseV.n; i++)
     {
         float *v = baseV.data + i * baseV.dim;
-        tmp.vec = v;
 
-        hnsw_insert(hnsw, &tmp, M);
+        hnsw_insert(hnsw, v, M);
     }
 
+    int baseCount = baseV.n;
     destroy_dataset(baseV);
 
-    int *groundtruth = malloc(sizeof(int) * K * baseV.n);
+    int *groundtruth = malloc(sizeof(int) * K * baseCount);
 
     // load queries
     Dataset qv = load_fvecs(query_path);
@@ -238,13 +210,11 @@ void benchmark_search(int id, const char *dataset_path)
     int *gt_tmp = malloc(sizeof(int) * K);
     for (int i = 0; i < qv.n; i++)
     {
-        tmp.vec = qv.data + i * qv.dim;
-        hnsw_linear(hnsw, &tmp, K, gt_tmp);
+        hnsw_linear(hnsw, qv.data + i * qv.dim, K, gt_tmp);
         memcpy(groundtruth + i * K, gt_tmp, sizeof(int) * K);
     }
     free(gt_tmp);
 
-    tmp.dim = qv.dim;
     struct timer t;
 
     double totalLatency = 0.0;
@@ -267,16 +237,14 @@ void benchmark_search(int id, const char *dataset_path)
         // warmup
         for (int i = 0; i < 1000; i++)
         {
-            tmp.vec = qv.data + (i % qv.n) * qv.dim;
-            hnsw_search(hnsw, &tmp, K, &tempRset[0]);
+            hnsw_search(hnsw, qv.data + (i % qv.n) * qv.dim, K, &tempRset[0]);
         }
 
         // timed search
         timer_start(&t);
         for (int i = 0; i < qv.n; i++)
         {
-            tmp.vec = qv.data + i * qv.dim;
-            hnsw_search(hnsw, &tmp, K, &tempRset[i]);
+            hnsw_search(hnsw, qv.data + i * qv.dim, K, &tempRset[i]);
         }
         timer_stop(&t);
 
@@ -299,7 +267,7 @@ void benchmark_search(int id, const char *dataset_path)
         double QPS = numQueries / (t.elapsed / 1000.0);
         // write CSV
         fprintf(filep, "%d,%d,%d,%d,%.6f,%.2f,%.3f,%d\n",
-                numQueries, tmp.dim, M, ef_search,
+                numQueries, qv.dim, M, ef_search,
                 t.elapsed / numQueries, // avg latency ms
                 QPS,                    // QPS
                 recall,

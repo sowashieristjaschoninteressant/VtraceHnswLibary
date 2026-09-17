@@ -1,12 +1,11 @@
 #include "stdio.h"
 
-#include "hnsw_public.h"
+#include "tests.h"
 
 int main(void){
 
-    const int ef = 20;
-    HNSW* h = hnsw_init(ef);
-
-
+    HEAP_TESTS();
+    ARENA_TESTS();
+    GRAPH_TESTS();
     return 0;
 }
